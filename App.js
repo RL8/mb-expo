@@ -108,6 +108,30 @@ const getSortOptions = (metric, subLabel, isAlbumView) => {
 // Metrics that don't make sense for individual songs
 const SONG_DISABLED_METRICS = ['songCount'];
 
+// Artist options (for future multi-artist support)
+const ARTISTS = [
+  { id: 'taylor-swift', name: 'Taylor Swift', available: true },
+  { id: 'coming-soon', name: 'More artists coming...', available: false },
+];
+
+// Metric explanations for info button
+const METRIC_INFO = {
+  default: { title: 'Default View', description: 'Shows all albums/songs with equal sizing to compare them visually.' },
+  songCount: { title: 'Song Count', description: 'Total number of songs on each album, including bonus and vault tracks.' },
+  totalMinutes: { title: 'Total Minutes', description: 'Combined runtime of all songs on the album in minutes.' },
+  words: { title: 'Words', description: 'Lyrics analysis - toggle between total words, unique words, or vocabulary richness (unique/total %).' },
+  avgEnergy: { title: 'Energy', description: 'How intense and active the music feels. Based on loudness, tempo, and dynamic range. Higher = more energetic.' },
+  avgDanceability: { title: 'Danceability', description: 'How suitable for dancing based on tempo, rhythm stability, and beat strength. Higher = easier to dance to.' },
+  avgValence: { title: 'Happiness', description: 'Musical positivity - major keys, upbeat tempos score higher. Measures how cheerful or melancholic a song sounds.' },
+  avgAcousticness: { title: 'Acoustic', description: 'Confidence that the track is acoustic (non-electronic instruments). Higher = more acoustic sound.' },
+  avgTempo: { title: 'Tempo', description: 'Speed of the music in beats per minute (BPM). Higher = faster songs.' },
+  vaultTracks: { title: 'Vault Tracks', description: 'Previously unreleased songs from the vault, included on Taylor\'s Version re-recordings.' },
+  coWriterCount: { title: 'Co-writers', description: 'Number of songwriting collaborators on the album. Shows Taylor\'s collaborative range.' },
+  themeCount: { title: 'Themes', description: 'Number of distinct lyrical themes explored across the album\'s songs.' },
+  totalCharacters: { title: 'Characters', description: 'Named characters mentioned across all songs - lovers, friends, and storytelling figures.' },
+  avgIntensity: { title: 'Intensity', description: 'Emotional intensity of the lyrics - combines sentiment analysis with language patterns.' },
+};
+
 function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleSubMode, disabledKeys = [] }) {
   const [open, setOpen] = useState(false);
   const selectedOption = ALL_METRICS.find(o => o.key === selected);
@@ -191,6 +215,72 @@ function Dropdown({ label, options, selected, onSelect, disabledKeys = [] }) {
         </View>
       )}
     </View>
+  );
+}
+
+function ArtistDropdown({ selected, onSelect }) {
+  const [open, setOpen] = useState(false);
+  const selectedArtist = ARTISTS.find(a => a.id === selected);
+
+  return (
+    <View style={styles.artistDropdownWrapper}>
+      <Pressable style={styles.artistDropdown} onPress={() => setOpen(!open)}>
+        <Text style={styles.artistName}>{selectedArtist?.name}</Text>
+        <Text style={styles.artistDropdownArrow}>{open ? '▲' : '▼'}</Text>
+      </Pressable>
+      {open && (
+        <View style={styles.artistDropdownMenu}>
+          {ARTISTS.map(artist => (
+            <Pressable
+              key={artist.id}
+              style={[
+                styles.artistDropdownItem,
+                selected === artist.id && styles.artistDropdownItemActive,
+                !artist.available && styles.artistDropdownItemDisabled
+              ]}
+              onPress={() => {
+                if (artist.available) {
+                  onSelect(artist.id);
+                  setOpen(false);
+                }
+              }}
+            >
+              <Text style={[
+                styles.artistDropdownItemText,
+                selected === artist.id && styles.artistDropdownItemTextActive,
+                !artist.available && styles.artistDropdownItemTextDisabled
+              ]}>
+                {artist.name}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function InfoButton({ metricKey }) {
+  const [visible, setVisible] = useState(false);
+  const info = METRIC_INFO[metricKey] || METRIC_INFO.default;
+
+  return (
+    <>
+      <Pressable style={styles.infoButton} onPress={() => setVisible(true)}>
+        <Text style={styles.infoButtonText}>ⓘ</Text>
+      </Pressable>
+      <Modal transparent animationType="fade" visible={visible} onRequestClose={() => setVisible(false)}>
+        <Pressable style={styles.infoModalOverlay} onPress={() => setVisible(false)}>
+          <View style={styles.infoModalContent}>
+            <Text style={styles.infoModalTitle}>{info.title}</Text>
+            <Text style={styles.infoModalDescription}>{info.description}</Text>
+            <Pressable style={styles.infoModalClose} onPress={() => setVisible(false)}>
+              <Text style={styles.infoModalCloseText}>Got it</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -332,7 +422,7 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
   );
 }
 
-function AnimatedTile({ item, metric, suffix, isSmall, index, showOrder, onPress }) {
+function AnimatedTile({ item, metric, suffix, isSmall, index, showOrder, onPress, isTrackFive, isVault }) {
   const textColor = getContrastColor(item.color);
   const width = item.x1 - item.x0;
   const height = item.y1 - item.y0;
@@ -378,6 +468,21 @@ function AnimatedTile({ item, metric, suffix, isSmall, index, showOrder, onPress
     </>
   );
 
+  // Track 5 glow effect (subtle golden glow)
+  const track5Style = isTrackFive ? {
+    shadowColor: '#fbbf24',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 8,
+  } : {};
+
+  // Vault track dashed border
+  const vaultStyle = isVault ? {
+    borderStyle: 'dashed',
+    borderWidth: 2,
+  } : {};
+
   return (
     <Animated.View
       style={[
@@ -389,6 +494,8 @@ function AnimatedTile({ item, metric, suffix, isSmall, index, showOrder, onPress
           height: animatedValues.height,
           backgroundColor: item.color,
         },
+        track5Style,
+        vaultStyle,
       ]}
     >
       {onPress ? (
@@ -412,6 +519,7 @@ function AppContent() {
   const [currentView, setCurrentView] = useState('treemap'); // 'treemap' | 'profile' | 'shared'
   const [hasProfile, setHasProfile] = useState(false);
   const [sharedProfileId, setSharedProfileId] = useState(null);
+  const [selectedArtist, setSelectedArtist] = useState('taylor-swift');
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isSmall = windowWidth < 380;
   const isMobile = windowWidth < 500;
@@ -503,6 +611,8 @@ function AppContent() {
           value: selectedMetric === 'default' ? 100 : Math.max(metricValue || 1, 1),
           color: song.color || selectedAlbum.color || colors.fallback,
           metricValue,
+          trackNumber: song.trackNumber,
+          isVault: song.vaultTracks > 0,
         };
       });
 
@@ -627,7 +737,10 @@ function AppContent() {
             </>
           ) : (
             <>
-              <Text style={[styles.title, isSmall && styles.titleSmall, styles.titleCenter]}>Taylor Swift</Text>
+              <View style={styles.headerLeft}>
+                <Text style={[styles.appName, isSmall && styles.appNameSmall]}>Music Besties</Text>
+                <ArtistDropdown selected={selectedArtist} onSelect={setSelectedArtist} />
+              </View>
               <Pressable style={styles.profileBtn} onPress={() => setCurrentView('profile')}>
                 <Text style={styles.profileBtnText}>{hasProfile ? 'View Profile' : 'Create Profile'}</Text>
               </Pressable>
@@ -655,6 +768,7 @@ function AppContent() {
             disabledKeys={selectedAlbum ? SONG_DISABLED_METRICS : []}
           />
           <Dropdown label="Sort" options={getSortOptions(currentMetric, currentSubLabel, !selectedAlbum)} selected={sortBy} onSelect={setSortBy} disabledKeys={selectedMetric === "default" ? ["value"] : []} />
+          <InfoButton metricKey={selectedMetric} />
         </View>
 
         <View style={[styles.treemapContainer, { width: treemapWidth, height: treemapHeight }]}>
@@ -667,6 +781,8 @@ function AppContent() {
               isSmall={isSmall}
               index={index}
               showOrder={sortBy === 'value' && selectedMetric !== 'default'}
+              isTrackFive={selectedAlbum && item.trackNumber === 5}
+              isVault={selectedAlbum && item.isVault}
               onPress={(tileItem) => {
                 if (selectedAlbum) {
                   // In album view - show song detail
@@ -904,6 +1020,135 @@ const styles = StyleSheet.create({
     color: colors.accent.primary,
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  // Header styles for Music Besties
+  headerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  appName: {
+    fontSize: 18,
+    color: colors.text.primary,
+    fontFamily: 'Outfit_800ExtraBold',
+  },
+  appNameSmall: {
+    fontSize: 15,
+  },
+  // Artist dropdown styles
+  artistDropdownWrapper: {
+    position: 'relative',
+  },
+  artistDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: colors.surface.medium,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  artistName: {
+    color: colors.accent.primary,
+    fontSize: 11,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  artistDropdownArrow: {
+    color: colors.text.muted,
+    fontSize: 8,
+  },
+  artistDropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    minWidth: 160,
+    marginTop: 4,
+    backgroundColor: colors.surface.heavy,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border.medium,
+    overflow: 'hidden',
+    zIndex: 100,
+  },
+  artistDropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  artistDropdownItemActive: {
+    backgroundColor: colors.accent.primaryMuted,
+  },
+  artistDropdownItemDisabled: {
+    opacity: 0.5,
+  },
+  artistDropdownItemText: {
+    color: colors.text.secondary,
+    fontSize: 12,
+    fontFamily: 'Outfit_400Regular',
+  },
+  artistDropdownItemTextActive: {
+    color: colors.accent.primary,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  artistDropdownItemTextDisabled: {
+    color: colors.text.disabled,
+    fontStyle: 'italic',
+  },
+  // Info button styles
+  infoButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: colors.surface.medium,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  infoButtonText: {
+    color: colors.accent.primary,
+    fontSize: 14,
+  },
+  infoModalOverlay: {
+    flex: 1,
+    backgroundColor: colors.bg.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  infoModalContent: {
+    backgroundColor: colors.bg.card,
+    borderRadius: 16,
+    padding: 24,
+    maxWidth: 320,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.border.medium,
+  },
+  infoModalTitle: {
+    fontSize: 18,
+    color: colors.text.primary,
+    fontFamily: 'Outfit_600SemiBold',
+    marginBottom: 12,
+  },
+  infoModalDescription: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    fontFamily: 'Outfit_400Regular',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  infoModalClose: {
+    backgroundColor: colors.accent.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  infoModalCloseText: {
+    color: colors.text.inverse,
+    fontSize: 13,
+    fontFamily: 'Outfit_600SemiBold',
   },
   controlsRow: {
     flexDirection: 'row',
