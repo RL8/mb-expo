@@ -82,7 +82,7 @@ const getIncompleteStep = (profile) => {
   return { step: 'preview', index: 0 };
 };
 
-export default function ProfileBuilder({ albums, songs, onClose }) {
+export default function ProfileBuilder({ albums, songs, onClose, onPreview }) {
   const [step, setStep] = useState('albums'); // 'albums' | 'songs' | 'lyrics' | 'preview'
   const [currentIndex, setCurrentIndex] = useState(0); // For songs (0-2) and lyrics (0-2)
   const [profile, setProfile] = useState(createEmptyProfile());
@@ -98,14 +98,18 @@ export default function ProfileBuilder({ albums, songs, onClose }) {
         if (saved.isComplete) {
           // Complete profile - go to preview
           setIsEditing(true);
-          setStep('preview');
+          if (onPreview) {
+            onPreview();
+          } else {
+            setStep('preview');
+          }
         } else {
           // Incomplete - show resume prompt
           setShowResumePrompt(true);
         }
       }
     });
-  }, []);
+  }, [onPreview]);
 
   // Auto-save when profile changes
   useEffect(() => {
@@ -259,11 +263,19 @@ export default function ProfileBuilder({ albums, songs, onClose }) {
       setCurrentIndex(currentIndex + 1);
     } else {
       // All lyrics done - mark complete and go to preview
-      setProfile(prev => ({
-        ...prev,
+      const updatedProfile = {
+        ...profile,
         isComplete: true,
-      }));
-      setStep('preview');
+      };
+      setProfile(updatedProfile);
+      saveProfile(updatedProfile);
+
+      // Use URL navigation if onPreview provided, otherwise internal state
+      if (onPreview) {
+        onPreview();
+      } else {
+        setStep('preview');
+      }
     }
   };
 

@@ -1,21 +1,21 @@
-import { useEffect } from 'react';
+import { SafeAreaView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import ComparisonLeaderboard from '../components/ComparisonLeaderboard';
-import { useDataStore } from '../stores/dataStore';
+import { colors } from '../lib/theme';
 
 export default function LeaderboardScreen() {
   const router = useRouter();
-  const { albums, songs, loadData } = useDataStore();
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   return (
-    <ComparisonLeaderboard
-      albums={albums}
-      songs={songs}
-      onClose={() => router.back()}
-    />
+    <SafeAreaView style={styles.container}>
+      <ComparisonLeaderboard
+        onClose={() => router.back()}
+        onViewProfile={(shareId) => router.push(`/p/${shareId}`)}
+      />
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg.primary },
+});
