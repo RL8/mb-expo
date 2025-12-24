@@ -8,6 +8,7 @@ import squarify from 'squarify';
 import { fetchAlbumsWithMetrics } from './lib/supabase';
 import ProfileBuilder from './components/ProfileBuilder';
 import SharedProfileView from './components/SharedProfileView';
+import ComparisonLeaderboard from './components/ComparisonLeaderboard';
 import PremiumPage from './components/PremiumPage';
 import { BlurredSection } from './components/PaywallBlur';
 import LinkAccountPrompt from './components/LinkAccountPrompt';
@@ -15,6 +16,7 @@ import { loadProfile } from './lib/storage';
 import { useAuthStore } from './stores/authStore';
 import { useSubscriptionStore } from './stores/subscriptionStore';
 import { colors, getContrastColor, getOverlayColor } from './lib/theme';
+import SongDeepDive from './components/SongDeepDive';
 
 // Parse URL parameters (web only)
 function getUrlParams() {
@@ -310,7 +312,9 @@ function InfoButton({ metricKey }) {
 }
 
 
-function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
+function SongDetailModal({ song, songs, albums, metric, dataKey, onClose, onNavigateToPremium }) {
+  const [showDeepDive, setShowDeepDive] = useState(false);
+
   if (!song) return null;
 
   const album = albums.find(a => a.id === song.album_id);
@@ -405,7 +409,7 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
 
             {/* Similar Songs - Premium Feature */}
             {metric?.key !== 'default' && mostSimilar.length > 0 && (
-              <BlurredSection title={`Most Similar (${metricLabel})`}>
+              <BlurredSection title={`Most Similar (${metricLabel})`} onNavigateToPremium={onNavigateToPremium}>
                 {mostSimilar.map((s, i) => {
                   const sAlbum = albums.find(a => a.id === s.album_id);
                   return (
@@ -424,7 +428,7 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
 
             {/* Different Songs - Premium Feature */}
             {metric?.key !== 'default' && mostDifferent.length > 0 && (
-              <BlurredSection title={`Most Different (${metricLabel})`}>
+              <BlurredSection title={`Most Different (${metricLabel})`} onNavigateToPremium={onNavigateToPremium}>
                 {mostDifferent.map((s, i) => {
                   const sAlbum = albums.find(a => a.id === s.album_id);
                   return (
@@ -440,9 +444,24 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
                 })}
               </BlurredSection>
             )}
+
+            {/* Deep Dive Button */}
+            <Pressable style={styles.deepDiveButton} onPress={() => setShowDeepDive(true)}>
+              <Text style={styles.deepDiveButtonText}>Deep Dive</Text>
+              <Text style={styles.deepDiveButtonArrow}>→</Text>
+            </Pressable>
           </ScrollView>
         </Pressable>
       </Pressable>
+
+      {/* Deep Dive Overlay */}
+      <SongDeepDive
+        visible={showDeepDive}
+        song={song}
+        album={album}
+        songs={songs}
+        onClose={() => setShowDeepDive(false)}
+      />
     </Modal>
   );
 }
@@ -564,7 +583,7 @@ function AppContent() {
   const [selectedMetric, setSelectedMetric] = useState('default');
   const [subModeIndex, setSubModeIndex] = useState(0);
   const [sortBy, setSortBy] = useState('date');
-  const [currentView, setCurrentView] = useState('treemap'); // 'treemap' | 'profile' | 'shared'
+  const [currentView, setCurrentView] = useState('treemap'); // 'treemap' | 'profile' | 'shared' | 'premium' | 'leaderboard'
   const [hasProfile, setHasProfile] = useState(false);
   const [sharedProfileId, setSharedProfileId] = useState(null);
   const [selectedArtist, setSelectedArtist] = useState('taylor-swift');
@@ -757,6 +776,27 @@ function AppContent() {
           setCurrentView('treemap');
           navigateToHome();
         }}
+        onCreateProfile={() => {
+          setSharedProfileId(null);
+          setCurrentView('profile');
+          navigateToHome();
+        }}
+        onViewLeaderboard={() => {
+          setCurrentView('leaderboard');
+        }}
+      />
+    );
+  }
+
+  // Show Comparison Leaderboard
+  if (currentView === 'leaderboard') {
+    return (
+      <ComparisonLeaderboard
+        onClose={() => setCurrentView('treemap')}
+        onViewProfile={(shareId) => {
+          setSharedProfileId(shareId);
+          setCurrentView('shared');
+        }}
       />
     );
   }
@@ -768,6 +808,18 @@ function AppContent() {
         albums={albums}
         songs={songs}
         onClose={() => setCurrentView('treemap')}
+      />
+    );
+  }
+
+  // Show Premium Page
+  if (currentView === 'premium') {
+    return (
+      <PremiumPage
+        onClose={() => setCurrentView('treemap')}
+        onSuccess={() => {
+          setCurrentView('treemap');
+        }}
       />
     );
   }
@@ -883,6 +935,10 @@ function AppContent() {
         metric={currentMetric}
         dataKey={actualDataKey}
         onClose={() => setSelectedSong(null)}
+        onNavigateToPremium={() => {
+          setSelectedSong(null); // Close the modal first
+          setCurrentView('premium');
+        }}
       />
     </SafeAreaView>
   );
@@ -1567,6 +1623,29 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: colors.text.secondary,
     fontFamily: 'Outfit_300Light',
+  },
+  deepDiveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent.primaryMuted,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginTop: 8,
+    gap: 8,
+  },
+  deepDiveButtonText: {
+    fontSize: 14,
+    fontFamily: 'JetBrainsMono_700Bold',
+    color: colors.accent.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  deepDiveButtonArrow: {
+    fontSize: 16,
+    fontFamily: 'Outfit_600SemiBold',
+    color: colors.accent.primary,
   },
   modalSection: {
     marginBottom: 20,

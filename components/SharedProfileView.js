@@ -1,22 +1,35 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, Pressable, ActivityIndicator, Platform } from 'react-native';
 import { colors, getContrastColor } from '../lib/theme';
-import { fetchSharedProfile, incrementProfileViews } from '../lib/supabase';
+import { fetchSharedProfile, incrementProfileViews, saveComparisonToSupabase, saveSharedProfile } from '../lib/supabase';
+import { loadProfile, loadShareId, saveShareId, saveComparison, loadComparisons } from '../lib/storage';
+import { calculateCompatibility, createComparisonRecord } from '../lib/compatibility';
+import CompatibilityCard, { NoProfileCard, SharePromptCard } from './CompatibilityCard';
 
 /**
  * SharedProfileView - Public view of a shared Swiftie Profile
  *
  * Displays a read-only version of someone's profile via share link.
- * Data is denormalized in the share - no additional DB calls needed.
+ * Shows compatibility score if viewer has a profile.
  *
  * @param {string} shareId - The unique share ID from URL
  * @param {function} onClose - Called when user wants to go back
+ * @param {function} onCreateProfile - Called when user wants to create profile
+ * @param {function} onViewLeaderboard - Called when user wants to view leaderboard
  */
-export default function SharedProfileView({ shareId, onClose }) {
+export default function SharedProfileView({ shareId, onClose, onCreateProfile, onViewLeaderboard }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Comparison state
+  const [myProfile, setMyProfile] = useState(null);
+  const [myShareId, setMyShareId] = useState(null);
+  const [compatibility, setCompatibility] = useState(null);
+  const [comparisonCount, setComparisonCount] = useState(0);
+  const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
+
+  // Load shared profile
   useEffect(() => {
     if (!shareId) {
       setError('Invalid share link');
@@ -24,8 +37,9 @@ export default function SharedProfileView({ shareId, onClose }) {
       return;
     }
 
-    async function loadProfile() {
+    async function loadData() {
       try {
+        // Load shared profile
         const data = await fetchSharedProfile(shareId);
         if (data) {
           setProfile(data);
@@ -33,6 +47,38 @@ export default function SharedProfileView({ shareId, onClose }) {
           incrementProfileViews(shareId);
         } else {
           setError('Profile not found');
+        }
+
+        // Load viewer's profile and share ID
+        const [viewerProfile, viewerShareId, comparisons] = await Promise.all([
+          loadProfile(),
+          loadShareId(),
+          loadComparisons(),
+        ]);
+
+        setMyProfile(viewerProfile);
+        setMyShareId(viewerShareId);
+        setComparisonCount(comparisons.length);
+
+        // Calculate compatibility if viewer has a profile
+        if (viewerProfile && viewerProfile.topAlbums?.length > 0 && data) {
+          const result = calculateCompatibility(viewerProfile, data);
+          setCompatibility(result);
+
+          // Save comparison locally
+          if (result) {
+            const record = createComparisonRecord(shareId, data, result.score);
+            await saveComparison(record);
+            setComparisonCount(prev => prev + 1);
+
+            // Save to Supabase if viewer has a share ID (for notifications)
+            if (viewerShareId) {
+              saveComparisonToSupabase(viewerShareId, shareId, result.score, {
+                topAlbums: viewerProfile.topAlbums,
+                albumNames: {}, // We'd need album names from somewhere
+              });
+            }
+          }
         }
       } catch (err) {
         console.error('Error loading shared profile:', err);
@@ -42,8 +88,43 @@ export default function SharedProfileView({ shareId, onClose }) {
       }
     }
 
-    loadProfile();
+    loadData();
   }, [shareId]);
+
+  // Handle creating share link for viewer
+  const handleCreateShareLink = async () => {
+    if (!myProfile) return;
+
+    setIsCreatingShareLink(true);
+    try {
+      // Build share data from profile (simplified - would need album data)
+      const shareData = {
+        topAlbums: myProfile.topAlbums,
+        albumSongs: myProfile.albumSongs,
+        songLyrics: myProfile.songLyrics,
+        albumNames: {},
+        albumColors: {},
+        songNames: {},
+      };
+
+      const result = await saveSharedProfile(shareData);
+      if (result?.shareId) {
+        await saveShareId(result.shareId);
+        setMyShareId(result.shareId);
+
+        // Now save the comparison to Supabase
+        if (compatibility) {
+          saveComparisonToSupabase(result.shareId, shareId, compatibility.score, {
+            topAlbums: myProfile.topAlbums,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error creating share link:', err);
+    } finally {
+      setIsCreatingShareLink(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -165,13 +246,39 @@ export default function SharedProfileView({ shareId, onClose }) {
           </View>
         </View>
 
-        {/* CTA to create own profile */}
-        <View style={styles.ctaContainer}>
-          <Text style={styles.ctaText}>Want to create your own profile?</Text>
-          <Pressable style={styles.ctaBtn} onPress={onClose}>
-            <Text style={styles.ctaBtnText}>Create Your Profile</Text>
-          </Pressable>
-        </View>
+        {/* Comparison section */}
+        {myProfile && myProfile.topAlbums?.length > 0 ? (
+          // User has a profile - show compatibility
+          compatibility ? (
+            myShareId ? (
+              // Has share ID - full functionality
+              <CompatibilityCard
+                score={compatibility.score}
+                breakdown={compatibility.breakdown}
+                comparisonCount={comparisonCount}
+                onViewLeaderboard={onViewLeaderboard}
+              />
+            ) : (
+              // No share ID - prompt to create one
+              <SharePromptCard
+                onCreateShareLink={handleCreateShareLink}
+                isLoading={isCreatingShareLink}
+              />
+            )
+          ) : null
+        ) : (
+          // No profile - prompt to create
+          <NoProfileCard onCreateProfile={onCreateProfile || onClose} />
+        )}
+
+        {/* Share encouragement for users with profiles */}
+        {myProfile && myProfile.topAlbums?.length > 0 && !myShareId && (
+          <View style={styles.shareEncouragement}>
+            <Text style={styles.shareEncouragementText}>
+              Share your profile to get more comparisons and find your best matches!
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -375,32 +482,21 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // CTA section
-  ctaContainer: {
+  // Share encouragement
+  shareEncouragement: {
     marginHorizontal: 20,
     marginBottom: 40,
-    padding: 20,
+    padding: 16,
     backgroundColor: colors.surface.medium,
-    borderRadius: 16,
-    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
   },
-  ctaText: {
-    fontSize: 14,
+  shareEncouragementText: {
+    fontSize: 13,
     fontFamily: 'Outfit_400Regular',
     color: colors.text.secondary,
-    marginBottom: 12,
-  },
-  ctaBtn: {
-    backgroundColor: colors.accent.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 20,
-  },
-  ctaBtnText: {
-    fontSize: 14,
-    fontFamily: 'Outfit_600SemiBold',
-    color: colors.text.inverse,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
