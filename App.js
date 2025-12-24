@@ -808,6 +808,11 @@ function AppContent() {
         albums={albums}
         songs={songs}
         onClose={() => setCurrentView('treemap')}
+        onViewLeaderboard={() => setCurrentView('leaderboard')}
+        onShare={() => {
+          // When user wants to share from comparison result,
+          // we'll let them view the profile card which has share functionality
+        }}
       />
     );
   }

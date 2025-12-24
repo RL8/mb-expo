@@ -5,7 +5,9 @@ import AlbumSelector from './AlbumSelector';
 import PerAlbumSongPicker from './PerAlbumSongPicker';
 import OnboardingLyricPicker from './OnboardingLyricPicker';
 import ProfileCard from './ProfileCard';
-import { saveProfile, loadProfile } from '../lib/storage';
+import ComparisonResult from './ComparisonResult';
+import { saveProfile, loadProfile, loadPendingComparison, clearPendingComparison, saveComparison } from '../lib/storage';
+import { calculateCompatibility, createComparisonRecord } from '../lib/compatibility';
 import { colors } from '../lib/theme';
 
 /**
@@ -82,12 +84,47 @@ const getIncompleteStep = (profile) => {
   return { step: 'preview', index: 0 };
 };
 
-export default function ProfileBuilder({ albums, songs, onClose, onPreview }) {
-  const [step, setStep] = useState('albums'); // 'albums' | 'songs' | 'lyrics' | 'preview'
+export default function ProfileBuilder({ albums, songs, onClose, onPreview, onViewLeaderboard, onShare }) {
+  const [step, setStep] = useState('albums'); // 'albums' | 'songs' | 'lyrics' | 'preview' | 'comparison'
   const [currentIndex, setCurrentIndex] = useState(0); // For songs (0-2) and lyrics (0-2)
   const [profile, setProfile] = useState(createEmptyProfile());
   const [isEditing, setIsEditing] = useState(false);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [comparisonResult, setComparisonResult] = useState(null); // For deferred deep link comparison
+
+  // Check for pending comparison and calculate result
+  const checkAndProcessPendingComparison = async (completedProfile) => {
+    try {
+      const pending = await loadPendingComparison();
+      if (pending && pending.profile) {
+        // Calculate compatibility between the completed profile and the pending profile
+        const result = calculateCompatibility(completedProfile, pending.profile);
+        if (result) {
+          // Save comparison locally
+          const record = createComparisonRecord(pending.shareId, pending.profile, result.score);
+          await saveComparison(record);
+
+          // Set up comparison result to show
+          setComparisonResult({
+            score: result.score,
+            breakdown: result.breakdown,
+            theirProfile: pending.profile,
+            shareId: pending.shareId,
+          });
+
+          // Clear the pending comparison
+          await clearPendingComparison();
+
+          // Go to comparison step instead of preview
+          setStep('comparison');
+          return true;
+        }
+      }
+    } catch (err) {
+      console.error('Error processing pending comparison:', err);
+    }
+    return false;
+  };
 
   // Load saved profile on mount
   useEffect(() => {
@@ -258,23 +295,28 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview }) {
     }));
   };
 
-  const handleLyricNext = () => {
+  const handleLyricNext = async () => {
     if (currentIndex < 2) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      // All lyrics done - mark complete and go to preview
+      // All lyrics done - mark complete
       const updatedProfile = {
         ...profile,
         isComplete: true,
       };
       setProfile(updatedProfile);
-      saveProfile(updatedProfile);
+      await saveProfile(updatedProfile);
 
-      // Use URL navigation if onPreview provided, otherwise internal state
-      if (onPreview) {
-        onPreview();
-      } else {
-        setStep('preview');
+      // Check for pending comparison (deferred deep link)
+      const hadPendingComparison = await checkAndProcessPendingComparison(updatedProfile);
+
+      if (!hadPendingComparison) {
+        // No pending comparison - use URL navigation if onPreview provided, otherwise internal state
+        if (onPreview) {
+          onPreview();
+        } else {
+          setStep('preview');
+        }
       }
     }
   };
@@ -302,7 +344,11 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview }) {
 
   // General back handler
   const handleBack = () => {
-    if (step === 'preview') {
+    if (step === 'comparison') {
+      // From comparison result, go to profile preview
+      setComparisonResult(null);
+      setStep('preview');
+    } else if (step === 'preview') {
       setStep('lyrics');
       setCurrentIndex(2);
     } else if (step === 'lyrics') {
@@ -378,13 +424,13 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview }) {
           </View>
 
           {/* Skip button */}
-          {step !== 'preview' && (
+          {step !== 'preview' && step !== 'comparison' && (
             <Pressable style={styles.skipBtn} onPress={handleSkip}>
               <Text style={styles.skipBtnText}>Save & Exit</Text>
             </Pressable>
           )}
 
-          {step === 'preview' && (
+          {(step === 'preview' || step === 'comparison') && (
             <Pressable style={styles.closeBtn} onPress={onClose}>
               <Text style={styles.closeBtnText}>×</Text>
             </Pressable>
@@ -458,6 +504,20 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview }) {
               albums={albums}
               songsByAlbum={songsByAlbum}
               onClose={onClose}
+            />
+          )}
+
+          {step === 'comparison' && comparisonResult && (
+            <ComparisonResult
+              score={comparisonResult.score}
+              breakdown={comparisonResult.breakdown}
+              theirProfile={comparisonResult.theirProfile}
+              onViewProfile={() => {
+                setComparisonResult(null);
+                setStep('preview');
+              }}
+              onShare={onShare}
+              onViewLeaderboard={onViewLeaderboard}
             />
           )}
         </View>

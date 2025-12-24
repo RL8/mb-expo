@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, Pressable, ActivityIndicator, Platform } from 'react-native';
 import { colors, getContrastColor } from '../lib/theme';
 import { fetchSharedProfile, incrementProfileViews, saveComparisonToSupabase, saveSharedProfile } from '../lib/supabase';
-import { loadProfile, loadShareId, saveShareId, saveComparison, loadComparisons } from '../lib/storage';
+import { loadProfile, loadShareId, saveShareId, saveComparison, loadComparisons, savePendingComparison } from '../lib/storage';
 import { calculateCompatibility, createComparisonRecord } from '../lib/compatibility';
 import CompatibilityCard, { NoProfileCard, SharePromptCard } from './CompatibilityCard';
 
@@ -123,6 +123,23 @@ export default function SharedProfileView({ shareId, onClose, onCreateProfile, o
       console.error('Error creating share link:', err);
     } finally {
       setIsCreatingShareLink(false);
+    }
+  };
+
+  // Handle "Create to compare" - save pending comparison and go to onboarding
+  const handleCreateToCompare = async () => {
+    if (profile && shareId) {
+      // Save the profile we want to compare with after onboarding
+      await savePendingComparison({
+        shareId,
+        profile,
+      });
+    }
+    // Navigate to profile creation
+    if (onCreateProfile) {
+      onCreateProfile();
+    } else {
+      onClose();
     }
   };
 
@@ -268,7 +285,7 @@ export default function SharedProfileView({ shareId, onClose, onCreateProfile, o
           ) : null
         ) : (
           // No profile - prompt to create
-          <NoProfileCard onCreateProfile={onCreateProfile || onClose} />
+          <NoProfileCard onCreateProfile={handleCreateToCompare} />
         )}
 
         {/* Share encouragement for users with profiles */}
