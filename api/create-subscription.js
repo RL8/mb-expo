@@ -26,6 +26,11 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'user_id is required' });
     }
 
+    const priceId = process.env.EXPO_PUBLIC_STRIPE_PREMIUM_PRICE_ID?.trim();
+    if (!priceId) {
+      return res.status(500).json({ error: 'Price ID not configured' });
+    }
+
     // Find or create customer
     let customer;
     const existingCustomers = await stripe.customers.search({
@@ -35,6 +40,17 @@ module.exports = async (req, res) => {
 
     if (existingCustomers.data.length > 0) {
       customer = existingCustomers.data[0];
+
+      // Check for existing incomplete subscriptions and cancel them
+      const existingSubs = await stripe.subscriptions.list({
+        customer: customer.id,
+        status: 'incomplete',
+        limit: 10,
+      });
+
+      for (const sub of existingSubs.data) {
+        await stripe.subscriptions.cancel(sub.id);
+      }
     } else {
       customer = await stripe.customers.create({
         email: email || undefined,
@@ -42,37 +58,20 @@ module.exports = async (req, res) => {
       });
     }
 
-    const priceId = process.env.EXPO_PUBLIC_STRIPE_PREMIUM_PRICE_ID?.trim();
-    if (!priceId) {
-      return res.status(500).json({ error: 'Price ID not configured' });
-    }
-
-    // Create subscription with incomplete status
-    // This returns a PaymentIntent that requires confirmation
-    const subscription = await stripe.subscriptions.create({
+    // Create a SetupIntent to collect payment method for the subscription
+    // This is the recommended approach for Payment Element with subscriptions
+    const setupIntent = await stripe.setupIntents.create({
       customer: customer.id,
-      items: [{ price: priceId }],
-      payment_behavior: 'default_incomplete',
-      payment_settings: {
-        save_default_payment_method: 'on_subscription',
+      payment_method_types: ['card'],
+      metadata: {
+        user_id,
+        price_id: priceId,
       },
-      expand: ['latest_invoice.payment_intent'],
-      metadata: { user_id },
     });
 
-    const invoice = subscription.latest_invoice;
-    if (!invoice || typeof invoice === 'string') {
-      return res.status(500).json({ error: 'Invoice not expanded properly' });
-    }
-
-    const paymentIntent = invoice.payment_intent;
-    if (!paymentIntent || typeof paymentIntent === 'string') {
-      return res.status(500).json({ error: 'PaymentIntent not available' });
-    }
-
     return res.status(200).json({
-      subscriptionId: subscription.id,
-      clientSecret: paymentIntent.client_secret,
+      clientSecret: setupIntent.client_secret,
+      customerId: customer.id,
     });
   } catch (error) {
     console.error('Create subscription error:', error.message);

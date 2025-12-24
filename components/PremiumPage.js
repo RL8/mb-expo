@@ -54,7 +54,7 @@ const FEATURES = [
 ];
 
 // Payment Form Component (inside Elements provider)
-function PaymentForm({ onSuccess }) {
+function PaymentForm({ onSuccess, customerId, userId }) {
   const stripe = useStripeWeb();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -72,16 +72,35 @@ function PaymentForm({ onSuccess }) {
         throw new Error(submitError.message);
       }
 
-      const { error: confirmError } = await stripe.confirmPayment({
+      // Confirm the SetupIntent
+      const { error: confirmError, setupIntent } = await stripe.confirmSetup({
         elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/?payment=success`,
-        },
+        redirect: 'if_required',
       });
 
       if (confirmError) {
         throw new Error(confirmError.message);
       }
+
+      // Create the subscription with the payment method
+      const apiBase = process.env.EXPO_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiBase}/api/complete-subscription`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_id: customerId,
+          payment_method_id: setupIntent.payment_method,
+          user_id: userId,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to complete subscription');
+      }
+
+      // Redirect to success
+      window.location.href = `${window.location.origin}/?payment=success`;
     } catch (err) {
       setError(err.message);
       setProcessing(false);
@@ -127,6 +146,7 @@ function WebCheckout({ onSuccess, onClose }) {
     loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY)
   );
   const [clientSecret, setClientSecret] = useState(null);
+  const [customerId, setCustomerId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -134,7 +154,7 @@ function WebCheckout({ onSuccess, onClose }) {
   const userEmail = useAuthStore((state) => state.user?.email);
 
   useEffect(() => {
-    async function createSubscription() {
+    async function createSetupIntent() {
       try {
         const apiBase = process.env.EXPO_PUBLIC_API_URL || '';
         const response = await fetch(`${apiBase}/api/create-subscription`, {
@@ -148,11 +168,12 @@ function WebCheckout({ onSuccess, onClose }) {
 
         if (!response.ok) {
           const data = await response.json();
-          throw new Error(data.error || 'Failed to create subscription');
+          throw new Error(data.error || 'Failed to initialize payment');
         }
 
         const data = await response.json();
         setClientSecret(data.clientSecret);
+        setCustomerId(data.customerId);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -161,7 +182,7 @@ function WebCheckout({ onSuccess, onClose }) {
     }
 
     if (userId) {
-      createSubscription();
+      createSetupIntent();
     }
   }, [userId, userEmail]);
 
@@ -229,7 +250,7 @@ function WebCheckout({ onSuccess, onClose }) {
           appearance,
         }}
       >
-        <PaymentForm onSuccess={onSuccess} />
+        <PaymentForm onSuccess={onSuccess} customerId={customerId} userId={userId} />
       </Elements>
     </View>
   );
