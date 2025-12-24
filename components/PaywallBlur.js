@@ -1,24 +1,35 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Platform, Linking } from 'react-native';
-import { useSubscription } from '../contexts/SubscriptionContext';
+import { View, Text, Pressable, StyleSheet, Platform, Linking, ActivityIndicator } from 'react-native';
+import { useAuthStore } from '../stores/authStore';
+import { useSubscriptionStore } from '../stores/subscriptionStore';
 import { colors } from '../lib/theme';
 
 // Premium checkout URL - replace with your actual Stripe Payment Link
 const CHECKOUT_URL = 'https://buy.stripe.com/test_fZe5o52dDbkQ2fS4gj';
 
 export function PaywallBlur({ children, feature = 'premium' }) {
-  const { isPremium } = useSubscription();
+  const isPremium = useSubscriptionStore((state) => state.isPremium);
+  const checkoutLoading = useSubscriptionStore((state) => state.checkoutLoading);
+  const userId = useAuthStore((state) => state.user?.id);
+  const openCheckout = useSubscriptionStore((state) => state.openCheckout);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [error, setError] = useState(null);
 
   if (isPremium) {
     return children;
   }
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
+    setError(null);
     if (Platform.OS === 'web') {
-      window.open(CHECKOUT_URL, '_blank');
+      try {
+        await openCheckout(userId);
+      } catch (err) {
+        console.error('Checkout error:', err);
+        // Fallback to direct link if API not set up
+        window.open(CHECKOUT_URL, '_blank');
+      }
     } else {
-      // On mobile, show message to use web
       setShowUpgrade(true);
     }
   };
@@ -32,7 +43,11 @@ export function PaywallBlur({ children, feature = 'premium' }) {
       </View>
 
       {/* Upgrade prompt */}
-      <Pressable style={styles.upgradePrompt} onPress={handleUpgrade}>
+      <Pressable
+        style={styles.upgradePrompt}
+        onPress={handleUpgrade}
+        disabled={checkoutLoading}
+      >
         <Text style={styles.lockIcon}>🔒</Text>
         <Text style={styles.upgradeTitle}>Premium Feature</Text>
         <Text style={styles.upgradeText}>
@@ -40,10 +55,14 @@ export function PaywallBlur({ children, feature = 'premium' }) {
             ? 'Unlock similar & different songs with Premium'
             : 'Visit web version to unlock'}
         </Text>
-        <View style={styles.upgradeButton}>
-          <Text style={styles.upgradeButtonText}>
-            {Platform.OS === 'web' ? 'Upgrade · $13.13/year' : 'Learn More'}
-          </Text>
+        <View style={[styles.upgradeButton, checkoutLoading && styles.upgradeButtonLoading]}>
+          {checkoutLoading ? (
+            <ActivityIndicator color={colors.text.inverse} size="small" />
+          ) : (
+            <Text style={styles.upgradeButtonText}>
+              {Platform.OS === 'web' ? 'Upgrade · $13.13/year' : 'Learn More'}
+            </Text>
+          )}
         </View>
       </Pressable>
 
@@ -69,7 +88,10 @@ export function PaywallBlur({ children, feature = 'premium' }) {
 
 // Simpler version - just shows blur with unlock button inline
 export function BlurredSection({ children, title }) {
-  const { isPremium } = useSubscription();
+  const isPremium = useSubscriptionStore((state) => state.isPremium);
+  const checkoutLoading = useSubscriptionStore((state) => state.checkoutLoading);
+  const userId = useAuthStore((state) => state.user?.id);
+  const openCheckout = useSubscriptionStore((state) => state.openCheckout);
 
   if (isPremium) {
     return (
@@ -80,9 +102,13 @@ export function BlurredSection({ children, title }) {
     );
   }
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
     if (Platform.OS === 'web') {
-      window.open(CHECKOUT_URL, '_blank');
+      try {
+        await openCheckout(userId);
+      } catch (error) {
+        window.open(CHECKOUT_URL, '_blank');
+      }
     }
   };
 
@@ -90,8 +116,16 @@ export function BlurredSection({ children, title }) {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
-        <Pressable style={styles.unlockBadge} onPress={handleUpgrade}>
-          <Text style={styles.unlockBadgeText}>🔒 Unlock</Text>
+        <Pressable
+          style={[styles.unlockBadge, checkoutLoading && styles.unlockBadgeLoading]}
+          onPress={handleUpgrade}
+          disabled={checkoutLoading}
+        >
+          {checkoutLoading ? (
+            <ActivityIndicator color={colors.semantic.warning} size={10} />
+          ) : (
+            <Text style={styles.unlockBadgeText}>🔒 Unlock</Text>
+          )}
         </Pressable>
       </View>
       <View style={styles.blurredSection}>
@@ -150,6 +184,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
+    minWidth: 140,
+    alignItems: 'center',
+  },
+  upgradeButtonLoading: {
+    opacity: 0.7,
   },
   upgradeButtonText: {
     fontSize: 11,
@@ -183,6 +222,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.semantic.warningBorder,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  unlockBadgeLoading: {
+    opacity: 0.7,
   },
   unlockBadgeText: {
     fontSize: 9,
