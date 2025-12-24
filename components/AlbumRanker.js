@@ -1,16 +1,7 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View, Pressable, useWindowDimensions } from 'react-native';
 import squarify from 'squarify';
-
-function getContrastColor(hexColor) {
-  if (!hexColor) return '#FFFFFF';
-  const hex = hexColor.replace('#', '');
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.5 ? '#000000' : '#FFFFFF';
-}
+import { colors, getContrastColor, getBadgeBackground, getBadgeTextColor } from '../lib/theme';
 
 export default function AlbumRanker({ albums, ranking, onRankingChange }) {
   const { width: windowWidth } = useWindowDimensions();
@@ -90,8 +81,8 @@ export default function AlbumRanker({ albums, ranking, onRankingChange }) {
               onPress={() => handleAlbumTap(item.id)}
             >
               {isSelected && (
-                <View style={[styles.rankBadge, { backgroundColor: textColor === '#000000' ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.95)' }]}>
-                  <Text style={[styles.rankText, { color: textColor === '#000000' ? '#fff' : '#000' }]}>
+                <View style={[styles.rankBadge, { backgroundColor: getBadgeBackground(textColor) }]}>
+                  <Text style={[styles.rankText, { color: getBadgeTextColor(textColor) }]}>
                     {rank}
                   </Text>
                 </View>
@@ -138,14 +129,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#e2e8f0',
+    color: colors.text.primary,
     textAlign: 'center',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 12,
     fontFamily: 'JetBrainsMono_400Regular',
-    color: '#38bdf8',
+    color: colors.accent.primary,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -154,7 +145,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.3)',
+    borderColor: colors.border.subtle,
   },
   tile: {
     position: 'absolute',
@@ -162,11 +153,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 8,
     borderWidth: 1.5,
-    borderColor: 'rgba(2, 6, 23, 0.8)',
+    borderColor: colors.border.tile,
     borderRadius: 6,
   },
   tileSelected: {
-    borderColor: '#38bdf8',
+    borderColor: colors.accent.primary,
     borderWidth: 3,
   },
   tileName: {
@@ -194,7 +185,7 @@ const styles = StyleSheet.create({
   selectionLabel: {
     fontSize: 10,
     fontFamily: 'JetBrainsMono_700Bold',
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 8,
@@ -207,7 +198,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: colors.surface.medium,
     borderRadius: 8,
     padding: 8,
   },
@@ -222,12 +213,12 @@ const styles = StyleSheet.create({
   selectionNum: {
     fontFamily: 'JetBrainsMono_700Bold',
     fontSize: 10,
-    color: '#fff',
+    color: colors.contrast.light,
   },
   selectionName: {
     flex: 1,
     fontFamily: 'Outfit_400Regular',
     fontSize: 11,
-    color: '#e2e8f0',
+    color: colors.text.primary,
   },
 });

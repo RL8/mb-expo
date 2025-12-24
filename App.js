@@ -7,6 +7,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import squarify from 'squarify';
 import { fetchAlbumsWithMetrics } from './lib/supabase';
 import ProfileBuilder from './components/ProfileBuilder';
+import { BlurredSection } from './components/PaywallBlur';
+import { SubscriptionProvider, useSubscription } from './contexts/SubscriptionContext';
+import { colors, getContrastColor, getOverlayColor } from './lib/theme';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -146,15 +149,6 @@ function Dropdown({ label, options, selected, onSelect, disabledKeys = [] }) {
   );
 }
 
-function getContrastColor(hexColor) {
-  if (!hexColor) return '#FFFFFF';
-  const hex = hexColor.replace('#', '');
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.5 ? '#000000' : '#FFFFFF';
-}
 
 function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
   if (!song) return null;
@@ -217,7 +211,7 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
                   <View style={styles.rankStats}>
                     <Text style={styles.rankValue}>{songValue.toLocaleString()}{suffix}</Text>
                     <Text style={styles.rankPercentile}>Top {percentile}%</Text>
-                    <Text style={[styles.rankDiff, { color: diffFromAlbum >= 0 ? '#4ade80' : '#f87171' }]}>
+                    <Text style={[styles.rankDiff, { color: diffFromAlbum >= 0 ? colors.semantic.success : colors.semantic.error }]}>
                       {diffFromAlbum >= 0 ? '+' : ''}{diffFromAlbum}% vs album avg
                     </Text>
                   </View>
@@ -249,10 +243,9 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
               </View>
             </View>
 
-            {/* Similar Songs */}
+            {/* Similar Songs - Premium Feature */}
             {metric?.key !== 'default' && mostSimilar.length > 0 && (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Most Similar ({metricLabel})</Text>
+              <BlurredSection title={`Most Similar (${metricLabel})`}>
                 {mostSimilar.map((s, i) => {
                   const sAlbum = albums.find(a => a.id === s.album_id);
                   return (
@@ -266,13 +259,12 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
                     </View>
                   );
                 })}
-              </View>
+              </BlurredSection>
             )}
 
-            {/* Different Songs */}
+            {/* Different Songs - Premium Feature */}
             {metric?.key !== 'default' && mostDifferent.length > 0 && (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Most Different ({metricLabel})</Text>
+              <BlurredSection title={`Most Different (${metricLabel})`}>
                 {mostDifferent.map((s, i) => {
                   const sAlbum = albums.find(a => a.id === s.album_id);
                   return (
@@ -286,7 +278,7 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
                     </View>
                   );
                 })}
-              </View>
+              </BlurredSection>
             )}
           </ScrollView>
         </Pressable>
@@ -324,7 +316,7 @@ function AnimatedTile({ item, metric, isSmall, index, showOrder, onPress }) {
   const TileContent = (
     <>
       {showOrderNumber && (
-        <View style={[styles.tileOrder, { backgroundColor: textColor === '#000000' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)' }]}>
+        <View style={[styles.tileOrder, { backgroundColor: getOverlayColor(textColor) }]}>
           <Text style={[styles.tileOrderText, { color: textColor, fontSize: orderFontSize }]}>
             {index + 1}
           </Text>
@@ -363,7 +355,7 @@ function AnimatedTile({ item, metric, isSmall, index, showOrder, onPress }) {
   );
 }
 
-export default function App() {
+function AppContent() {
   const [albums, setAlbums] = useState([]);
   const [songs, setSongs] = useState([]);
   const [selectedAlbum, setSelectedAlbum] = useState(null);
@@ -435,7 +427,7 @@ export default function App() {
         id: song.id,
         name: song.name,
         value: selectedMetric === 'default' ? 100 : Math.max(song[actualDataKey] || 1, 1),
-        color: song.color || selectedAlbum.color || '#666',
+        color: song.color || selectedAlbum.color || colors.fallback,
         metricValue: song[actualDataKey] || 0,
       }));
 
@@ -457,7 +449,7 @@ export default function App() {
       id: album.id,
       name: album.display_name,
       value: selectedMetric === 'default' ? 100 : Math.max(album[actualDataKey] || 1, 1),
-      color: album.color || '#666',
+      color: album.color || colors.fallback,
       metricValue: album[actualDataKey] || 0,
     }));
 
@@ -468,7 +460,7 @@ export default function App() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#38bdf8" />
+        <ActivityIndicator size="large" color={colors.accent.primary} />
         <Text style={styles.loadingText}>Loading discography...</Text>
         <StatusBar style="light" />
       </View>
@@ -583,10 +575,22 @@ export default function App() {
   );
 }
 
+// Wrap with SubscriptionProvider
+export default function App() {
+  // TODO: Get actual userId from auth when implemented
+  const userId = null; // Free tier by default until auth is set up
+
+  return (
+    <SubscriptionProvider userId={userId}>
+      <AppContent />
+    </SubscriptionProvider>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: colors.bg.primary,
   },
   content: {
     flex: 1,
@@ -594,20 +598,20 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: colors.bg.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
     marginTop: 16,
-    color: 'rgba(226, 232, 240, 0.5)',
+    color: colors.text.muted,
     fontSize: 14,
     fontFamily: 'Outfit_400Regular',
     letterSpacing: 1,
   },
   title: {
     fontSize: 18,
-    color: '#e2e8f0',
+    color: colors.text.primary,
     textAlign: 'center',
     marginBottom: 10,
     fontFamily: 'Outfit_600SemiBold',
@@ -630,10 +634,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     marginRight: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: colors.accent.primaryMuted,
   },
   backButtonText: {
-    color: '#38bdf8',
+    color: colors.accent.primary,
     fontSize: 16,
     fontFamily: 'Outfit_600SemiBold',
   },
@@ -656,12 +660,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 16,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: colors.surface.medium,
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.3)',
+    borderColor: colors.border.subtle,
   },
   dropdownLabel: {
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.muted,
     fontSize: 9,
     fontFamily: 'JetBrainsMono_400Regular',
     textTransform: 'uppercase',
@@ -673,20 +677,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   dropdownValue: {
-    color: '#38bdf8',
+    color: colors.accent.primary,
     fontSize: 10,
     fontFamily: 'JetBrainsMono_700Bold',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   dropdownSubLabel: {
-    color: 'rgba(148, 163, 184, 0.6)',
+    color: colors.text.secondary,
     fontSize: 8,
     fontFamily: 'JetBrainsMono_400Regular',
     textTransform: 'lowercase',
   },
   dropdownArrow: {
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.muted,
     fontSize: 8,
     marginLeft: 2,
   },
@@ -697,14 +701,14 @@ const styles = StyleSheet.create({
     minWidth: 140,
     maxHeight: 300,
     marginTop: 4,
-    backgroundColor: 'rgba(15, 23, 42, 0.98)',
+    backgroundColor: colors.surface.heavy,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.5)',
+    borderColor: colors.border.medium,
     overflow: 'hidden',
   },
   dropdownGroupLabel: {
-    color: 'rgba(148, 163, 184, 0.4)',
+    color: colors.text.disabled,
     fontSize: 8,
     fontFamily: 'JetBrainsMono_700Bold',
     textTransform: 'uppercase',
@@ -720,26 +724,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   dropdownItemActive: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: colors.accent.primaryMuted,
   },
   dropdownItemText: {
-    color: 'rgba(148, 163, 184, 0.7)',
+    color: colors.text.secondary,
     fontSize: 10,
     fontFamily: 'JetBrainsMono_400Regular',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   dropdownItemTextActive: {
-    color: '#38bdf8',
+    color: colors.accent.primary,
   },
   dropdownItemDisabled: {
     opacity: 0.3,
   },
   dropdownItemTextDisabled: {
-    color: 'rgba(148, 163, 184, 0.3)',
+    color: colors.text.disabled,
   },
   dropdownItemSubLabel: {
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.muted,
     fontSize: 8,
     fontFamily: 'JetBrainsMono_400Regular',
     marginLeft: 4,
@@ -749,7 +753,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.3)',
+    borderColor: colors.border.subtle,
   },
   tile: {
     position: 'absolute',
@@ -757,7 +761,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 8,
     borderWidth: 1.5,
-    borderColor: 'rgba(2, 6, 23, 0.8)',
+    borderColor: colors.border.tile,
     borderRadius: 8,
   },
   tileInner: {
@@ -798,21 +802,21 @@ const styles = StyleSheet.create({
   footerText: {
     fontFamily: 'JetBrainsMono_400Regular',
     fontSize: 9,
-    color: 'rgba(148, 163, 184, 0.4)',
+    color: colors.text.muted,
     letterSpacing: 2,
   },
   profileBtn: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: colors.accent.primaryMuted,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.5)',
+    borderColor: colors.accent.primaryBorder,
   },
   profileBtnText: {
     fontFamily: 'JetBrainsMono_700Bold',
     fontSize: 9,
-    color: '#38bdf8',
+    color: colors.accent.primary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -820,20 +824,20 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: colors.bg.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.bg.card,
     borderRadius: 20,
     padding: 20,
     maxWidth: 400,
     width: '100%',
     maxHeight: '80%',
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.5)',
+    borderColor: colors.border.medium,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -851,13 +855,13 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    color: '#e2e8f0',
+    color: colors.text.primary,
     fontFamily: 'Outfit_600SemiBold',
     marginBottom: 2,
   },
   modalSubtitle: {
     fontSize: 12,
-    color: 'rgba(148, 163, 184, 0.6)',
+    color: colors.text.secondary,
     fontFamily: 'Outfit_400Regular',
   },
   modalClose: {
@@ -865,7 +869,7 @@ const styles = StyleSheet.create({
   },
   modalCloseText: {
     fontSize: 24,
-    color: 'rgba(148, 163, 184, 0.6)',
+    color: colors.text.secondary,
     fontFamily: 'Outfit_300Light',
   },
   modalSection: {
@@ -873,7 +877,7 @@ const styles = StyleSheet.create({
   },
   modalSectionTitle: {
     fontSize: 10,
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.muted,
     fontFamily: 'JetBrainsMono_700Bold',
     textTransform: 'uppercase',
     letterSpacing: 1.5,
@@ -884,7 +888,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rankBadge: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: colors.accent.primaryMuted,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -893,12 +897,12 @@ const styles = StyleSheet.create({
   },
   rankNumber: {
     fontSize: 24,
-    color: '#38bdf8',
+    color: colors.accent.primary,
     fontFamily: 'JetBrainsMono_700Bold',
   },
   rankTotal: {
     fontSize: 10,
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.muted,
     fontFamily: 'JetBrainsMono_400Regular',
   },
   rankStats: {
@@ -906,13 +910,13 @@ const styles = StyleSheet.create({
   },
   rankValue: {
     fontSize: 16,
-    color: '#e2e8f0',
+    color: colors.text.primary,
     fontFamily: 'JetBrainsMono_700Bold',
     marginBottom: 2,
   },
   rankPercentile: {
     fontSize: 12,
-    color: '#38bdf8',
+    color: colors.accent.primary,
     fontFamily: 'JetBrainsMono_400Regular',
     marginBottom: 2,
   },
@@ -925,33 +929,33 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   quickStat: {
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: colors.surface.medium,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.3)',
+    borderColor: colors.border.subtle,
   },
   quickStatValue: {
     fontSize: 14,
-    color: '#e2e8f0',
+    color: colors.text.primary,
     fontFamily: 'JetBrainsMono_700Bold',
   },
   quickStatLabel: {
     fontSize: 8,
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.muted,
     fontFamily: 'JetBrainsMono_400Regular',
     textTransform: 'uppercase',
     marginTop: 2,
   },
   vaultBadge: {
-    backgroundColor: 'rgba(251, 191, 36, 0.15)',
-    borderColor: 'rgba(251, 191, 36, 0.3)',
+    backgroundColor: colors.semantic.warningMuted,
+    borderColor: colors.semantic.warningBorder,
   },
   vaultText: {
     fontSize: 10,
-    color: '#fbbf24',
+    color: colors.semantic.warning,
     fontFamily: 'JetBrainsMono_700Bold',
   },
   songRow: {
@@ -959,7 +963,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(51, 65, 85, 0.2)',
+    borderBottomColor: colors.border.subtle,
   },
   songDot: {
     width: 8,
@@ -972,17 +976,17 @@ const styles = StyleSheet.create({
   },
   songName: {
     fontSize: 13,
-    color: '#e2e8f0',
+    color: colors.text.primary,
     fontFamily: 'Outfit_400Regular',
   },
   songAlbum: {
     fontSize: 10,
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.muted,
     fontFamily: 'Outfit_300Light',
   },
   songValue: {
     fontSize: 11,
-    color: '#38bdf8',
+    color: colors.accent.primary,
     fontFamily: 'JetBrainsMono_400Regular',
   },
 });

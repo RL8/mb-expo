@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, Pressable, ScrollView, TextInput } from 'react-native';
+import { colors } from '../lib/theme';
 
 function SongItem({ song, album, isSelected, selectionIndex, onToggle, disabled }) {
   return (
     <Pressable
       style={[
         styles.songItem,
-        { borderLeftColor: album?.color || '#666' },
+        { borderLeftColor: album?.color || colors.fallback },
         isSelected && styles.songItemSelected,
         disabled && styles.songItemDisabled,
       ]}
@@ -123,7 +124,7 @@ export default function SongPicker({ albums, songs, selectedSongs, onSelectionCh
                   <TextInput
                     style={styles.reasonInput}
                     placeholder="Why this song? (optional)"
-                    placeholderTextColor="rgba(148, 163, 184, 0.4)"
+                    placeholderTextColor={colors.text.disabled}
                     value={selection.reason}
                     onChangeText={(text) => handleReasonChange(selection.songId, text)}
                     maxLength={100}
@@ -170,14 +171,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#e2e8f0',
+    color: colors.text.primary,
     textAlign: 'center',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 12,
     fontFamily: 'JetBrainsMono_400Regular',
-    color: '#38bdf8',
+    color: colors.accent.primary,
     textAlign: 'center',
     marginBottom: 12,
   },
@@ -191,23 +192,23 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 16,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: colors.surface.medium,
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.3)',
+    borderColor: colors.border.subtle,
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: '#38bdf8',
-    borderColor: '#38bdf8',
+    backgroundColor: colors.accent.primary,
+    borderColor: colors.accent.primary,
   },
   filterChipText: {
     fontSize: 10,
     fontFamily: 'JetBrainsMono_400Regular',
-    color: 'rgba(148, 163, 184, 0.7)',
+    color: colors.text.secondary,
     textTransform: 'uppercase',
   },
   filterChipTextActive: {
-    color: '#020617',
+    color: colors.text.inverse,
   },
   selectedSection: {
     paddingHorizontal: 16,
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontFamily: 'JetBrainsMono_700Bold',
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 8,
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
   selectedItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: colors.surface.medium,
     borderRadius: 10,
     padding: 10,
     marginBottom: 6,
@@ -241,13 +242,13 @@ const styles = StyleSheet.create({
   selectedName: {
     fontSize: 12,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#e2e8f0',
+    color: colors.text.primary,
     marginBottom: 4,
   },
   reasonInput: {
     fontSize: 11,
     fontFamily: 'Outfit_400Regular',
-    color: '#e2e8f0',
+    color: colors.text.primary,
     padding: 0,
   },
   removeBtn: {
@@ -260,7 +261,7 @@ const styles = StyleSheet.create({
   },
   removeBtnText: {
     fontSize: 16,
-    color: '#f87171',
+    color: colors.semantic.error,
   },
   songList: {
     flex: 1,
@@ -269,15 +270,15 @@ const styles = StyleSheet.create({
   songItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: colors.surface.light,
     borderRadius: 8,
     padding: 10,
     marginBottom: 6,
     borderLeftWidth: 3,
   },
   songItemSelected: {
-    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-    borderColor: '#38bdf8',
+    backgroundColor: colors.interactive.hover,
+    borderColor: colors.accent.primary,
   },
   songItemDisabled: {
     opacity: 0.4,
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#38bdf8',
+    backgroundColor: colors.accent.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -294,7 +295,7 @@ const styles = StyleSheet.create({
   selectionBadgeText: {
     fontSize: 10,
     fontFamily: 'JetBrainsMono_700Bold',
-    color: '#020617',
+    color: colors.text.inverse,
   },
   songInfo: {
     flex: 1,
@@ -302,19 +303,19 @@ const styles = StyleSheet.create({
   songName: {
     fontSize: 13,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#e2e8f0',
+    color: colors.text.primary,
   },
   songNameSelected: {
-    color: '#38bdf8',
+    color: colors.accent.primary,
   },
   albumName: {
     fontSize: 10,
     fontFamily: 'Outfit_400Regular',
-    color: 'rgba(148, 163, 184, 0.6)',
+    color: colors.text.secondary,
   },
   checkmark: {
     fontSize: 14,
-    color: '#38bdf8',
+    color: colors.accent.primary,
     marginLeft: 8,
   },
 });

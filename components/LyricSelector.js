@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { fetchSongLyrics } from '../lib/supabase';
+import { colors } from '../lib/theme';
 
 function parseLyrics(raw) {
   if (!raw) return [];
@@ -169,7 +170,7 @@ export default function LyricSelector({ albums, songs, selectedLyric, onLyricSel
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#38bdf8" />
+          <ActivityIndicator size="small" color={colors.accent.primary} />
           <Text style={styles.loadingText}>Loading lyrics...</Text>
         </View>
       ) : parsedLines.length === 0 ? (
@@ -206,14 +207,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#e2e8f0',
+    color: colors.text.primary,
     textAlign: 'center',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 12,
     fontFamily: 'JetBrainsMono_400Regular',
-    color: '#38bdf8',
+    color: colors.accent.primary,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -238,14 +239,14 @@ const styles = StyleSheet.create({
   albumTitle: {
     fontSize: 12,
     fontFamily: 'JetBrainsMono_700Bold',
-    color: 'rgba(148, 163, 184, 0.6)',
+    color: colors.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   songPickerItem: {
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: colors.surface.light,
     borderRadius: 8,
     marginBottom: 4,
     marginLeft: 18,
@@ -253,14 +254,14 @@ const styles = StyleSheet.create({
   songPickerName: {
     fontSize: 13,
     fontFamily: 'Outfit_400Regular',
-    color: '#e2e8f0',
+    color: colors.text.primary,
   },
   songHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: colors.surface.medium,
     marginHorizontal: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -272,23 +273,23 @@ const styles = StyleSheet.create({
   songHeaderName: {
     fontSize: 14,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#e2e8f0',
+    color: colors.text.primary,
   },
   songHeaderAlbum: {
     fontSize: 10,
     fontFamily: 'Outfit_400Regular',
-    color: 'rgba(148, 163, 184, 0.6)',
+    color: colors.text.muted,
   },
   changeSongBtn: {
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: colors.accent.primaryMuted,
     borderRadius: 8,
   },
   changeSongBtnText: {
     fontSize: 10,
     fontFamily: 'JetBrainsMono_700Bold',
-    color: '#38bdf8',
+    color: colors.accent.primary,
     textTransform: 'uppercase',
   },
   loadingContainer: {
@@ -300,7 +301,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 12,
     fontFamily: 'Outfit_400Regular',
-    color: 'rgba(148, 163, 184, 0.6)',
+    color: colors.text.muted,
   },
   emptyContainer: {
     flex: 1,
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     fontFamily: 'Outfit_400Regular',
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.disabled,
   },
   lyricsContainer: {
     flex: 1,
@@ -323,18 +324,18 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   lyricLineSelected: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: colors.accent.primaryMuted,
     borderLeftWidth: 3,
-    borderLeftColor: '#38bdf8',
+    borderLeftColor: colors.accent.primary,
   },
   lyricText: {
     fontSize: 14,
     fontFamily: 'Outfit_400Regular',
-    color: 'rgba(226, 232, 240, 0.8)',
+    color: colors.text.secondary,
     lineHeight: 22,
   },
   lyricTextSelected: {
-    color: '#38bdf8',
+    color: colors.accent.primary,
     fontFamily: 'Outfit_600SemiBold',
   },
 });

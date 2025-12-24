@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { StyleSheet, Text, View, Pressable, Platform } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import { colors } from '../lib/theme';
 
 export default function ProfileCard({ profile, albums, songs, onClose }) {
   const cardRef = useRef();
@@ -107,7 +108,7 @@ export default function ProfileCard({ profile, albums, songs, onClose }) {
         {profile.favoriteLyric && profile.favoriteLyric.lines?.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>FAVORITE LYRIC</Text>
-            <View style={[styles.lyricBox, { borderLeftColor: lyricAlbum?.color || '#38bdf8' }]}>
+            <View style={[styles.lyricBox, { borderLeftColor: lyricAlbum?.color || colors.accent.primary }]}>
               {profile.favoriteLyric.lines.map((line, idx) => (
                 <Text key={idx} style={styles.lyricLine}>{line}</Text>
               ))}
@@ -148,32 +149,32 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#e2e8f0',
+    color: colors.text.primary,
   },
   closeBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.contrast.lightOverlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeBtnText: {
     fontSize: 20,
-    color: '#e2e8f0',
+    color: colors.text.primary,
   },
   card: {
     marginHorizontal: 20,
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.bg.card,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.5)',
+    borderColor: colors.border.medium,
   },
   cardTitle: {
     fontSize: 22,
     fontFamily: 'Outfit_800ExtraBold',
-    color: '#e2e8f0',
+    color: colors.text.primary,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -183,7 +184,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 9,
     fontFamily: 'JetBrainsMono_700Bold',
-    color: '#38bdf8',
+    color: colors.accent.primary,
     letterSpacing: 2,
     marginBottom: 10,
   },
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
   albumRankItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: colors.surface.medium,
     borderRadius: 8,
     paddingRight: 10,
     paddingVertical: 4,
@@ -212,18 +213,18 @@ const styles = StyleSheet.create({
   albumRankNum: {
     fontSize: 10,
     fontFamily: 'JetBrainsMono_700Bold',
-    color: '#fff',
+    color: colors.contrast.light,
   },
   albumRankName: {
     fontSize: 10,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#e2e8f0',
+    color: colors.text.primary,
     maxWidth: 80,
   },
   moreText: {
     fontSize: 10,
     fontFamily: 'JetBrainsMono_400Regular',
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.disabled,
     marginTop: 6,
   },
   topSongItem: {
@@ -244,17 +245,17 @@ const styles = StyleSheet.create({
   topSongName: {
     fontSize: 13,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#e2e8f0',
+    color: colors.text.primary,
   },
   topSongReason: {
     fontSize: 11,
     fontFamily: 'Outfit_300Light',
     fontStyle: 'italic',
-    color: 'rgba(148, 163, 184, 0.7)',
+    color: colors.text.secondary,
     marginTop: 2,
   },
   lyricBox: {
-    backgroundColor: 'rgba(56, 189, 248, 0.05)',
+    backgroundColor: colors.accent.primaryMuted,
     borderLeftWidth: 3,
     borderRadius: 4,
     paddingVertical: 12,
@@ -264,25 +265,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Outfit_400Regular',
     fontStyle: 'italic',
-    color: '#e2e8f0',
+    color: colors.text.primary,
     lineHeight: 22,
   },
   lyricAttribution: {
     fontSize: 10,
     fontFamily: 'JetBrainsMono_400Regular',
-    color: 'rgba(148, 163, 184, 0.6)',
+    color: colors.text.muted,
     marginTop: 8,
   },
   cardFooter: {
     alignItems: 'center',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(51, 65, 85, 0.3)',
+    borderTopColor: colors.border.subtle,
   },
   footerText: {
     fontSize: 10,
     fontFamily: 'JetBrainsMono_400Regular',
-    color: 'rgba(148, 163, 184, 0.4)',
+    color: colors.text.disabled,
     letterSpacing: 2,
   },
   actions: {
@@ -290,7 +291,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   shareBtn: {
-    backgroundColor: '#38bdf8',
+    backgroundColor: colors.accent.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
   shareBtnText: {
     fontSize: 14,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#020617',
+    color: colors.text.inverse,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },

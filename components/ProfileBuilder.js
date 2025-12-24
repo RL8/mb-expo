@@ -6,6 +6,7 @@ import SongPicker from './SongPicker';
 import LyricSelector from './LyricSelector';
 import ProfileCard from './ProfileCard';
 import { saveProfile, loadProfile, createEmptyProfile } from '../lib/storage';
+import { colors } from '../lib/theme';
 
 const STEPS = [
   { key: 'albums', label: 'Albums', component: 'AlbumRanker' },
@@ -164,7 +165,7 @@ export default function ProfileBuilder({ albums, songs, onClose }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: colors.bg.primary,
   },
   safeArea: {
     flex: 1,
@@ -179,13 +180,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.surface.light,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backBtnText: {
     fontSize: 18,
-    color: '#e2e8f0',
+    color: colors.text.primary,
     fontFamily: 'Outfit_400Regular',
   },
   stepIndicators: {
@@ -198,14 +199,14 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(148, 163, 184, 0.2)',
+    backgroundColor: colors.surface.light,
   },
   stepDotActive: {
-    backgroundColor: '#38bdf8',
+    backgroundColor: colors.accent.primary,
     width: 24,
   },
   stepDotComplete: {
-    backgroundColor: 'rgba(56, 189, 248, 0.5)',
+    backgroundColor: colors.accent.primaryBorder,
   },
   headerSpacer: {
     width: 36,
@@ -217,31 +218,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(51, 65, 85, 0.3)',
+    borderTopColor: colors.border.subtle,
   },
   nextBtn: {
-    backgroundColor: '#38bdf8',
+    backgroundColor: colors.accent.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
   nextBtnDisabled: {
-    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    backgroundColor: colors.interactive.disabled,
   },
   nextBtnText: {
     fontSize: 14,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#020617',
+    color: colors.text.inverse,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   nextBtnTextDisabled: {
-    color: 'rgba(2, 6, 23, 0.4)',
+    color: colors.interactive.disabledText,
   },
   skipHint: {
     fontSize: 11,
     fontFamily: 'Outfit_400Regular',
-    color: 'rgba(148, 163, 184, 0.5)',
+    color: colors.text.muted,
     textAlign: 'center',
     marginTop: 8,
   },
