@@ -1,10 +1,23 @@
 import { useRef } from 'react';
-import { StyleSheet, Text, View, Pressable, Platform } from 'react-native';
+import { StyleSheet, Text, View, Pressable, ScrollView } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
-import { colors } from '../lib/theme';
+import { colors, getContrastColor } from '../lib/theme';
 
-export default function ProfileCard({ profile, albums, songs, onClose }) {
+/**
+ * ProfileCard - Shareable Swiftie Profile
+ *
+ * New format:
+ * - Top 3 albums with their top 3 songs each
+ * - 3 lyrics (one line from #1 song of each top 3 album)
+ * - App URL branding (no watermark)
+ *
+ * @param {object} profile - User profile data
+ * @param {Array} albums - All albums
+ * @param {object} songsByAlbum - Songs keyed by album ID { [albumId]: [songs] }
+ * @param {function} onClose - Called when card is closed
+ */
+export default function ProfileCard({ profile, albums, songsByAlbum, onClose }) {
   const cardRef = useRef();
 
   const handleShare = async () => {
@@ -25,27 +38,36 @@ export default function ProfileCard({ profile, albums, songs, onClose }) {
     }
   };
 
-  // Get ranked albums
-  const rankedAlbums = profile.albumRanking
-    .map(id => albums.find(a => a.id === id))
+  // Get top 3 albums with their data
+  const topAlbums = (profile.topAlbums || [])
+    .slice(0, 3)
+    .map(albumId => albums.find(a => a.id === albumId))
     .filter(Boolean);
 
-  // Get top songs with details
-  const topSongsWithDetails = profile.topSongs
-    .map(({ songId, reason }) => {
-      const song = songs.find(s => s.id === songId);
-      const album = albums.find(a => a.id === song?.album_id);
-      return { song, album, reason };
-    })
-    .filter(s => s.song);
+  // Get songs for each album
+  const getAlbumSongs = (albumId) => {
+    const songIds = profile.albumSongs?.[albumId] || [];
+    const albumSongs = songsByAlbum?.[albumId] || [];
+    return songIds
+      .map(songId => albumSongs.find(s => s.id === songId))
+      .filter(Boolean);
+  };
 
-  // Get lyric details
-  const lyricSong = profile.favoriteLyric
-    ? songs.find(s => s.id === profile.favoriteLyric.songId)
-    : null;
-  const lyricAlbum = lyricSong
-    ? albums.find(a => a.id === lyricSong.album_id)
-    : null;
+  // Get lyrics (one line from #1 song of each album)
+  const getLyrics = () => {
+    return topAlbums.map(album => {
+      const songs = getAlbumSongs(album.id);
+      const topSong = songs[0]; // #1 song
+      const lyric = profile.songLyrics?.[topSong?.id];
+      return {
+        album,
+        song: topSong,
+        line: lyric || null,
+      };
+    }).filter(l => l.line && l.song);
+  };
+
+  const lyrics = getLyrics();
 
   return (
     <View style={styles.container}>
@@ -56,74 +78,77 @@ export default function ProfileCard({ profile, albums, songs, onClose }) {
         </Pressable>
       </View>
 
-      {/* Shareable Card */}
-      <View
-        ref={cardRef}
-        style={styles.card}
-        collapsable={false}
-      >
-        <Text style={styles.cardTitle}>My Swiftie Profile</Text>
+      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        {/* Shareable Card */}
+        <View
+          ref={cardRef}
+          style={styles.card}
+          collapsable={false}
+        >
+          <Text style={styles.cardTitle}>My Swiftie Profile</Text>
 
-        {/* Album Rankings */}
-        {rankedAlbums.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ALBUM RANKING</Text>
-            <View style={styles.albumGrid}>
-              {rankedAlbums.slice(0, 6).map((album, idx) => (
-                <View key={album.id} style={styles.albumRankItem}>
-                  <View style={[styles.albumColor, { backgroundColor: album.color }]}>
-                    <Text style={styles.albumRankNum}>{idx + 1}</Text>
+          {/* Top 3 Albums with Songs */}
+          {topAlbums.map((album, albumIdx) => {
+            const songs = getAlbumSongs(album.id);
+            const textColor = getContrastColor(album.color);
+
+            return (
+              <View key={album.id} style={styles.albumSection}>
+                {/* Album header */}
+                <View style={[styles.albumHeader, { backgroundColor: album.color }]}>
+                  <View style={styles.albumRankBadge}>
+                    <Text style={[styles.albumRankNum, { color: textColor }]}>
+                      #{albumIdx + 1}
+                    </Text>
                   </View>
-                  <Text style={styles.albumRankName} numberOfLines={1}>
+                  <Text style={[styles.albumName, { color: textColor }]} numberOfLines={1}>
                     {album.display_name}
+                  </Text>
+                </View>
+
+                {/* Songs for this album */}
+                <View style={styles.songsList}>
+                  {songs.map((song, songIdx) => (
+                    <View key={song.id} style={styles.songItem}>
+                      <View style={[styles.songRank, { backgroundColor: album.color }]}>
+                        <Text style={[styles.songRankText, { color: textColor }]}>
+                          {songIdx + 1}
+                        </Text>
+                      </View>
+                      <Text style={styles.songName} numberOfLines={1}>
+                        {song.title}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            );
+          })}
+
+          {/* Lyrics section - one line from each album's #1 song */}
+          {lyrics.length > 0 && (
+            <View style={styles.lyricsSection}>
+              <Text style={styles.sectionTitle}>FAVORITE LYRICS</Text>
+              {lyrics.map(({ album, song, line }, idx) => (
+                <View
+                  key={`${album.id}-${song.id}`}
+                  style={[styles.lyricItem, { borderLeftColor: album.color }]}
+                >
+                  <Text style={styles.lyricLine}>"{line}"</Text>
+                  <Text style={styles.lyricAttribution}>
+                    — {song.title}
                   </Text>
                 </View>
               ))}
             </View>
-            {rankedAlbums.length > 6 && (
-              <Text style={styles.moreText}>+{rankedAlbums.length - 6} more</Text>
-            )}
-          </View>
-        )}
+          )}
 
-        {/* Top Songs */}
-        {topSongsWithDetails.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>TOP SONGS</Text>
-            {topSongsWithDetails.map(({ song, album, reason }, idx) => (
-              <View key={song.id} style={styles.topSongItem}>
-                <View style={[styles.topSongDot, { backgroundColor: album?.color }]} />
-                <View style={styles.topSongInfo}>
-                  <Text style={styles.topSongName}>{song.name || song.title}</Text>
-                  {reason ? (
-                    <Text style={styles.topSongReason}>"{reason}"</Text>
-                  ) : null}
-                </View>
-              </View>
-            ))}
+          {/* Footer - App URL branding */}
+          <View style={styles.cardFooter}>
+            <Text style={styles.footerText}>swiftieranker.com</Text>
           </View>
-        )}
-
-        {/* Favorite Lyric */}
-        {profile.favoriteLyric && profile.favoriteLyric.lines?.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>FAVORITE LYRIC</Text>
-            <View style={[styles.lyricBox, { borderLeftColor: lyricAlbum?.color || colors.accent.primary }]}>
-              {profile.favoriteLyric.lines.map((line, idx) => (
-                <Text key={idx} style={styles.lyricLine}>{line}</Text>
-              ))}
-              <Text style={styles.lyricAttribution}>
-                — {lyricSong?.name || lyricSong?.title}
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Footer */}
-        <View style={styles.cardFooter}>
-          <Text style={styles.footerText}>swiftie.app</Text>
         </View>
-      </View>
+      </ScrollView>
 
       {/* Actions */}
       <View style={styles.actions}>
@@ -163,23 +188,85 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: colors.text.primary,
   },
+  scrollContainer: {
+    flex: 1,
+  },
   card: {
     marginHorizontal: 20,
+    marginBottom: 20,
     backgroundColor: colors.bg.card,
     borderRadius: 20,
-    padding: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: colors.border.medium,
   },
   cardTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: 'Outfit_800ExtraBold',
     color: colors.text.primary,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  section: {
-    marginBottom: 20,
+
+  // Album section styles
+  albumSection: {
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: colors.surface.medium,
+  },
+  albumHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  albumRankBadge: {
+    marginRight: 8,
+  },
+  albumRankNum: {
+    fontSize: 12,
+    fontFamily: 'JetBrainsMono_700Bold',
+  },
+  albumName: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  songsList: {
+    padding: 8,
+    gap: 6,
+  },
+  songItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface.light,
+    borderRadius: 8,
+    padding: 8,
+  },
+  songRank: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  songRankText: {
+    fontSize: 10,
+    fontFamily: 'JetBrainsMono_700Bold',
+  },
+  songName: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: 'Outfit_400Regular',
+    color: colors.text.primary,
+  },
+
+  // Lyrics section styles
+  lyricsSection: {
+    marginTop: 4,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 9,
@@ -188,92 +275,29 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginBottom: 10,
   },
-  albumGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  albumRankItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  lyricItem: {
     backgroundColor: colors.surface.medium,
-    borderRadius: 8,
-    paddingRight: 10,
-    paddingVertical: 4,
-    paddingLeft: 4,
-  },
-  albumColor: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 6,
-  },
-  albumRankNum: {
-    fontSize: 10,
-    fontFamily: 'JetBrainsMono_700Bold',
-    color: colors.contrast.light,
-  },
-  albumRankName: {
-    fontSize: 10,
-    fontFamily: 'Outfit_600SemiBold',
-    color: colors.text.primary,
-    maxWidth: 80,
-  },
-  moreText: {
-    fontSize: 10,
-    fontFamily: 'JetBrainsMono_400Regular',
-    color: colors.text.disabled,
-    marginTop: 6,
-  },
-  topSongItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  topSongDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 5,
-    marginRight: 10,
-  },
-  topSongInfo: {
-    flex: 1,
-  },
-  topSongName: {
-    fontSize: 13,
-    fontFamily: 'Outfit_600SemiBold',
-    color: colors.text.primary,
-  },
-  topSongReason: {
-    fontSize: 11,
-    fontFamily: 'Outfit_300Light',
-    fontStyle: 'italic',
-    color: colors.text.secondary,
-    marginTop: 2,
-  },
-  lyricBox: {
-    backgroundColor: colors.accent.primaryMuted,
     borderLeftWidth: 3,
-    borderRadius: 4,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 8,
   },
   lyricLine: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Outfit_400Regular',
     fontStyle: 'italic',
     color: colors.text.primary,
-    lineHeight: 22,
+    lineHeight: 18,
   },
   lyricAttribution: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: 'JetBrainsMono_400Regular',
     color: colors.text.muted,
-    marginTop: 8,
+    marginTop: 6,
   },
+
+  // Footer styles
   cardFooter: {
     alignItems: 'center',
     paddingTop: 12,
@@ -283,12 +307,14 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 10,
     fontFamily: 'JetBrainsMono_400Regular',
-    color: colors.text.disabled,
-    letterSpacing: 2,
+    color: colors.text.muted,
+    letterSpacing: 1,
   },
+
+  // Actions
   actions: {
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingBottom: 20,
   },
   shareBtn: {
     backgroundColor: colors.accent.primary,
