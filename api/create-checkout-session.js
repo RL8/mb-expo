@@ -29,8 +29,8 @@ module.exports = async (req, res) => {
           quantity: 1,
         },
       ],
-      // Guest checkout - don't require account, create customer from email
-      customer_creation: 'always',
+      // Note: customer_creation is not valid for subscription mode
+      // Stripe automatically creates a customer when checkout completes
       // Store user_id in metadata for webhook to link subscription
       metadata: {
         user_id: user_id,
