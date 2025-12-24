@@ -3,6 +3,7 @@
     "name": "mb-expo",
     "slug": "mb-expo",
     "version": "1.0.0",
+    "scheme": "musicbesties",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -23,7 +24,9 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "static"
     },
     "plugins": [
       "expo-font"

@@ -87,7 +87,7 @@ export function PaywallBlur({ children, feature = 'premium' }) {
 }
 
 // Simpler version - just shows blur with unlock button inline
-export function BlurredSection({ children, title }) {
+export function BlurredSection({ children, title, onNavigateToPremium }) {
   const isPremium = useSubscriptionStore((state) => state.isPremium);
   const checkoutLoading = useSubscriptionStore((state) => state.checkoutLoading);
   const userId = useAuthStore((state) => state.user?.id);
@@ -103,6 +103,12 @@ export function BlurredSection({ children, title }) {
   }
 
   const handleUpgrade = async () => {
+    // If a navigation callback is provided, use it (embedded checkout flow)
+    if (onNavigateToPremium) {
+      onNavigateToPremium();
+      return;
+    }
+    // Otherwise fall back to redirect checkout
     if (Platform.OS === 'web') {
       try {
         await openCheckout(userId);
