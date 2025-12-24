@@ -1,0 +1,252 @@
+import React, { useState } from 'react';
+import { View, Text, Pressable, StyleSheet, Platform, Linking } from 'react-native';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { colors } from '../lib/theme';
+
+// Premium checkout URL - replace with your actual Stripe Payment Link
+const CHECKOUT_URL = 'https://buy.stripe.com/test_fZe5o52dDbkQ2fS4gj';
+
+export function PaywallBlur({ children, feature = 'premium' }) {
+  const { isPremium } = useSubscription();
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  if (isPremium) {
+    return children;
+  }
+
+  const handleUpgrade = () => {
+    if (Platform.OS === 'web') {
+      window.open(CHECKOUT_URL, '_blank');
+    } else {
+      // On mobile, show message to use web
+      setShowUpgrade(true);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Blurred content */}
+      <View style={styles.blurredContent}>
+        {children}
+        <View style={styles.blurOverlay} />
+      </View>
+
+      {/* Upgrade prompt */}
+      <Pressable style={styles.upgradePrompt} onPress={handleUpgrade}>
+        <Text style={styles.lockIcon}>🔒</Text>
+        <Text style={styles.upgradeTitle}>Premium Feature</Text>
+        <Text style={styles.upgradeText}>
+          {Platform.OS === 'web'
+            ? 'Unlock similar & different songs with Premium'
+            : 'Visit web version to unlock'}
+        </Text>
+        <View style={styles.upgradeButton}>
+          <Text style={styles.upgradeButtonText}>
+            {Platform.OS === 'web' ? 'Upgrade · $13.13/year' : 'Learn More'}
+          </Text>
+        </View>
+      </Pressable>
+
+      {/* Mobile upgrade modal */}
+      {showUpgrade && Platform.OS !== 'web' && (
+        <View style={styles.mobileModal}>
+          <Text style={styles.mobileModalTitle}>Upgrade on Web</Text>
+          <Text style={styles.mobileModalText}>
+            To unlock premium features, please visit our web version at:
+          </Text>
+          <Text style={styles.mobileModalUrl}>taylorswift.app/premium</Text>
+          <Pressable
+            style={styles.mobileModalClose}
+            onPress={() => setShowUpgrade(false)}
+          >
+            <Text style={styles.mobileModalCloseText}>Got it</Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// Simpler version - just shows blur with unlock button inline
+export function BlurredSection({ children, title }) {
+  const { isPremium } = useSubscription();
+
+  if (isPremium) {
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {children}
+      </View>
+    );
+  }
+
+  const handleUpgrade = () => {
+    if (Platform.OS === 'web') {
+      window.open(CHECKOUT_URL, '_blank');
+    }
+  };
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <Pressable style={styles.unlockBadge} onPress={handleUpgrade}>
+          <Text style={styles.unlockBadgeText}>🔒 Unlock</Text>
+        </Pressable>
+      </View>
+      <View style={styles.blurredSection}>
+        {children}
+        <View style={styles.sectionBlur} />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'relative',
+  },
+  blurredContent: {
+    position: 'relative',
+  },
+  blurOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.bg.overlay,
+    // On web, use backdrop-filter for real blur
+    ...(Platform.OS === 'web' && {
+      backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
+    }),
+  },
+  upgradePrompt: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  lockIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  upgradeTitle: {
+    fontSize: 14,
+    color: colors.text.primary,
+    fontFamily: 'Outfit_600SemiBold',
+    marginBottom: 4,
+  },
+  upgradeText: {
+    fontSize: 11,
+    color: colors.text.secondary,
+    fontFamily: 'Outfit_400Regular',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  upgradeButton: {
+    backgroundColor: colors.accent.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  upgradeButtonText: {
+    fontSize: 11,
+    color: colors.text.inverse,
+    fontFamily: 'JetBrainsMono_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // Section styles
+  section: {
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 10,
+    color: colors.text.disabled,
+    fontFamily: 'JetBrainsMono_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  unlockBadge: {
+    backgroundColor: colors.semantic.warningMuted,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.semantic.warningBorder,
+  },
+  unlockBadgeText: {
+    fontSize: 9,
+    color: colors.semantic.warning,
+    fontFamily: 'JetBrainsMono_700Bold',
+  },
+  blurredSection: {
+    position: 'relative',
+    minHeight: 100,
+  },
+  sectionBlur: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.surface.heavy,
+    borderRadius: 8,
+    ...(Platform.OS === 'web' && {
+      backdropFilter: 'blur(6px)',
+      WebkitBackdropFilter: 'blur(6px)',
+    }),
+  },
+
+  // Mobile modal
+  mobileModal: {
+    position: 'absolute',
+    top: '50%',
+    left: 20,
+    right: 20,
+    transform: [{ translateY: -80 }],
+    backgroundColor: colors.bg.elevated,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.medium,
+  },
+  mobileModalTitle: {
+    fontSize: 16,
+    color: colors.text.primary,
+    fontFamily: 'Outfit_600SemiBold',
+    marginBottom: 8,
+  },
+  mobileModalText: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    fontFamily: 'Outfit_400Regular',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  mobileModalUrl: {
+    fontSize: 12,
+    color: colors.accent.primary,
+    fontFamily: 'JetBrainsMono_700Bold',
+    marginBottom: 16,
+  },
+  mobileModalClose: {
+    backgroundColor: colors.accent.primaryMuted,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.accent.primary,
+  },
+  mobileModalCloseText: {
+    fontSize: 12,
+    color: colors.accent.primary,
+    fontFamily: 'JetBrainsMono_700Bold',
+  },
+});
