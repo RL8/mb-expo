@@ -1,8 +1,10 @@
-import { useRef } from 'react';
-import { StyleSheet, Text, View, Pressable, ScrollView } from 'react-native';
+import { useRef, useState } from 'react';
+import { StyleSheet, Text, View, Pressable, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import * as Clipboard from 'expo-clipboard';
 import { colors, getContrastColor } from '../lib/theme';
+import { saveSharedProfile } from '../lib/supabase';
 
 /**
  * ProfileCard - Shareable Swiftie Profile
@@ -19,6 +21,70 @@ import { colors, getContrastColor } from '../lib/theme';
  */
 export default function ProfileCard({ profile, albums, songsByAlbum, onClose }) {
   const cardRef = useRef();
+  const [shareUrl, setShareUrl] = useState(null);
+  const [isCreatingLink, setIsCreatingLink] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCreateShareLink = async () => {
+    if (shareUrl) {
+      // Already have a link, just copy it
+      await handleCopyLink();
+      return;
+    }
+
+    setIsCreatingLink(true);
+    try {
+      // Build the shareable profile data
+      const shareData = {
+        topAlbums: profile.topAlbums,
+        albumSongs: profile.albumSongs,
+        songLyrics: profile.songLyrics,
+        // Include album and song names for display (denormalized)
+        albumNames: {},
+        songNames: {},
+      };
+
+      // Add album display names
+      (profile.topAlbums || []).forEach(albumId => {
+        const album = albums.find(a => a.id === albumId);
+        if (album) {
+          shareData.albumNames[albumId] = album.display_name;
+          shareData.albumColors = shareData.albumColors || {};
+          shareData.albumColors[albumId] = album.color;
+        }
+      });
+
+      // Add song titles
+      Object.entries(profile.albumSongs || {}).forEach(([albumId, songIds]) => {
+        const albumSongs = songsByAlbum?.[albumId] || [];
+        songIds.forEach(songId => {
+          const song = albumSongs.find(s => s.id === songId);
+          if (song) {
+            shareData.songNames[songId] = song.title;
+          }
+        });
+      });
+
+      const result = await saveSharedProfile(shareData);
+      if (result?.shareUrl) {
+        setShareUrl(result.shareUrl);
+        await Clipboard.setStringAsync(result.shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch (error) {
+      console.error('Error creating share link:', error);
+    } finally {
+      setIsCreatingLink(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!shareUrl) return;
+    await Clipboard.setStringAsync(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleShare = async () => {
     try {
@@ -152,10 +218,34 @@ export default function ProfileCard({ profile, albums, songsByAlbum, onClose }) 
 
       {/* Actions */}
       <View style={styles.actions}>
+        {/* Share Link Button */}
+        <Pressable
+          style={[styles.linkBtn, shareUrl && styles.linkBtnActive]}
+          onPress={handleCreateShareLink}
+          disabled={isCreatingLink}
+        >
+          {isCreatingLink ? (
+            <ActivityIndicator size="small" color={colors.accent.primary} />
+          ) : (
+            <Text style={[styles.linkBtnText, shareUrl && styles.linkBtnTextActive]}>
+              {copied ? 'Copied!' : shareUrl ? 'Copy Link' : 'Create Link'}
+            </Text>
+          )}
+        </Pressable>
+
+        {/* Share Image Button */}
         <Pressable style={styles.shareBtn} onPress={handleShare}>
-          <Text style={styles.shareBtnText}>Share Profile</Text>
+          <Text style={styles.shareBtnText}>Share Image</Text>
         </Pressable>
       </View>
+
+      {/* Show share URL if created */}
+      {shareUrl && (
+        <View style={styles.urlContainer}>
+          <Text style={styles.urlLabel}>Your profile link:</Text>
+          <Text style={styles.urlText} numberOfLines={1}>{shareUrl}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -313,20 +403,70 @@ const styles = StyleSheet.create({
 
   // Actions
   actions: {
+    flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 12,
+    gap: 10,
+  },
+  linkBtn: {
+    flex: 1,
+    backgroundColor: colors.surface.medium,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  linkBtnActive: {
+    borderColor: colors.accent.primaryBorder,
+    backgroundColor: colors.accent.primaryMuted,
+  },
+  linkBtnText: {
+    fontSize: 12,
+    fontFamily: 'Outfit_600SemiBold',
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  linkBtnTextActive: {
+    color: colors.accent.primary,
   },
   shareBtn: {
+    flex: 1,
     backgroundColor: colors.accent.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
   shareBtnText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Outfit_600SemiBold',
     color: colors.text.inverse,
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+
+  // URL display
+  urlContainer: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 12,
+    backgroundColor: colors.surface.medium,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  urlLabel: {
+    fontSize: 10,
+    fontFamily: 'JetBrainsMono_400Regular',
+    color: colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  urlText: {
+    fontSize: 12,
+    fontFamily: 'JetBrainsMono_400Regular',
+    color: colors.accent.primary,
   },
 });

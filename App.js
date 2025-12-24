@@ -7,10 +7,45 @@ import * as SplashScreen from 'expo-splash-screen';
 import squarify from 'squarify';
 import { fetchAlbumsWithMetrics } from './lib/supabase';
 import ProfileBuilder from './components/ProfileBuilder';
+import SharedProfileView from './components/SharedProfileView';
 import { BlurredSection } from './components/PaywallBlur';
+import LinkAccountPrompt from './components/LinkAccountPrompt';
 import { loadProfile } from './lib/storage';
-import { SubscriptionProvider, useSubscription } from './contexts/SubscriptionContext';
+import { useAuthStore } from './stores/authStore';
+import { useSubscriptionStore } from './stores/subscriptionStore';
 import { colors, getContrastColor, getOverlayColor } from './lib/theme';
+
+// Parse URL parameters (web only)
+function getUrlParams() {
+  if (Platform.OS !== 'web') return {};
+  const params = new URLSearchParams(window.location.search);
+  return {
+    payment: params.get('payment'),
+    sessionId: params.get('session_id'),
+  };
+}
+
+// Parse share profile ID from URL path (web only)
+function getShareIdFromPath() {
+  if (Platform.OS !== 'web') return null;
+  const path = window.location.pathname;
+  const match = path.match(/^\/p\/([a-zA-Z0-9]+)$/);
+  return match ? match[1] : null;
+}
+
+// Clear path to home
+function navigateToHome() {
+  if (Platform.OS === 'web' && window.history.replaceState) {
+    window.history.replaceState({}, '', '/');
+  }
+}
+
+// Clear URL parameters after reading
+function clearUrlParams() {
+  if (Platform.OS === 'web' && window.history.replaceState) {
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,6 +59,7 @@ const METRIC_GROUPS = [
       { key: 'words', label: 'Words', suffix: '', subModes: [
         { key: 'wordCount', subLabel: 'total' },
         { key: 'uniqueWordCount', subLabel: 'unique' },
+        { key: 'vocabularyRichness', subLabel: 'vocabulary %', suffix: '%' },
       ]},
     ]
   },
@@ -51,15 +87,23 @@ const METRIC_GROUPS = [
 
 const ALL_METRICS = METRIC_GROUPS.flatMap(g => g.metrics);
 
-const SORT_OPTIONS = [
-  { key: 'date', label: 'Date' },
-  { key: 'value', label: 'Value' },
-];
+// Dynamic sort options based on selected metric
+const getSortOptions = (metric, subLabel, isAlbumView) => {
+  const metricLabel = metric?.label || 'Value';
+  const displayLabel = subLabel ? `${metricLabel} (${subLabel})` : metricLabel;
 
-const SONG_SORT_OPTIONS = [
-  { key: 'date', label: 'Track' },
-  { key: 'value', label: 'Value' },
-];
+  if (isAlbumView) {
+    return [
+      { key: 'date', label: 'Released' },
+      { key: 'value', label: displayLabel },
+    ];
+  } else {
+    return [
+      { key: 'date', label: 'Track #' },
+      { key: 'value', label: displayLabel },
+    ];
+  }
+};
 
 // Metrics that don't make sense for individual songs
 const SONG_DISABLED_METRICS = ['songCount'];
@@ -365,8 +409,9 @@ function AppContent() {
   const [selectedMetric, setSelectedMetric] = useState('default');
   const [subModeIndex, setSubModeIndex] = useState(0);
   const [sortBy, setSortBy] = useState('date');
-  const [currentView, setCurrentView] = useState('treemap'); // 'treemap' | 'profile'
+  const [currentView, setCurrentView] = useState('treemap'); // 'treemap' | 'profile' | 'shared'
   const [hasProfile, setHasProfile] = useState(false);
+  const [sharedProfileId, setSharedProfileId] = useState(null);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isSmall = windowWidth < 380;
   const isMobile = windowWidth < 500;
@@ -398,6 +443,15 @@ function AppContent() {
       setHasProfile(profile && profile.topAlbums?.length > 0);
     });
   }, [currentView]); // Re-check when returning from profile builder
+
+  // Check for shared profile URL on mount
+  useEffect(() => {
+    const shareId = getShareIdFromPath();
+    if (shareId) {
+      setSharedProfileId(shareId);
+      setCurrentView('shared');
+    }
+  }, []);
 
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded && !dataLoading) {
@@ -466,6 +520,25 @@ function AppContent() {
     return squarify(data, container);
   }, [albums, songs, selectedAlbum, selectedMetric, actualDataKey, sortBy, treemapWidth, treemapHeight]);
 
+  // Album navigation helpers
+  const sortedAlbumsForNav = useMemo(() => {
+    return [...albums].sort((a, b) => new Date(a.official_release_date) - new Date(b.official_release_date));
+  }, [albums]);
+
+  const currentAlbumIndex = selectedAlbum
+    ? sortedAlbumsForNav.findIndex(a => a.id === selectedAlbum.id)
+    : -1;
+
+  const isFirstAlbum = currentAlbumIndex === 0;
+  const isLastAlbum = currentAlbumIndex === sortedAlbumsForNav.length - 1;
+
+  const navigateAlbum = (direction) => {
+    const newIndex = currentAlbumIndex + direction;
+    if (newIndex >= 0 && newIndex < sortedAlbumsForNav.length) {
+      setSelectedAlbum(sortedAlbumsForNav[newIndex]);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -482,6 +555,20 @@ function AppContent() {
   const footerSuffix = sortBy === 'value' && selectedMetric !== 'default'
     ? ` · RANKED BY ${metricLabel}${subLabelUpper}`
     : ` · ${sortLabel}`;
+
+  // Show Shared Profile View
+  if (currentView === 'shared' && sharedProfileId) {
+    return (
+      <SharedProfileView
+        shareId={sharedProfileId}
+        onClose={() => {
+          setSharedProfileId(null);
+          setCurrentView('treemap');
+          navigateToHome();
+        }}
+      />
+    );
+  }
 
   // Show Profile Builder
   if (currentView === 'profile') {
@@ -500,24 +587,42 @@ function AppContent() {
         <View style={styles.titleRow}>
           {selectedAlbum ? (
             <>
-              <Pressable style={styles.backButton} onPress={() => setSelectedAlbum(null)}>
-                <Text style={styles.backButtonText}>←</Text>
+              <View style={styles.albumNavContainer}>
+                <Pressable
+                  style={[styles.albumNavButton, isFirstAlbum && styles.albumNavButtonDisabled]}
+                  onPress={() => navigateAlbum(-1)}
+                  disabled={isFirstAlbum}
+                >
+                  <Text style={[styles.albumNavButtonText, isFirstAlbum && styles.albumNavButtonTextDisabled]}>‹</Text>
+                </Pressable>
+                <Text style={[styles.title, isSmall && styles.titleSmall, styles.albumNavTitle]} numberOfLines={1}>
+                  {selectedAlbum.display_name}
+                </Text>
+                <Pressable
+                  style={[styles.albumNavButton, isLastAlbum && styles.albumNavButtonDisabled]}
+                  onPress={() => navigateAlbum(1)}
+                  disabled={isLastAlbum}
+                >
+                  <Text style={[styles.albumNavButtonText, isLastAlbum && styles.albumNavButtonTextDisabled]}>›</Text>
+                </Pressable>
+              </View>
+              <Pressable style={styles.backToAlbumsBtn} onPress={() => setSelectedAlbum(null)}>
+                <Text style={styles.backToAlbumsBtnText}>Back to Albums</Text>
               </Pressable>
-              <Text style={[styles.title, isSmall && styles.titleSmall, styles.titleCenter]} numberOfLines={1}>
-                {selectedAlbum.display_name}
-              </Text>
             </>
           ) : (
-            <Text style={[styles.title, isSmall && styles.titleSmall, styles.titleCenter]}>Taylor Swift</Text>
+            <>
+              <Text style={[styles.title, isSmall && styles.titleSmall, styles.titleCenter]}>Taylor Swift</Text>
+              <Pressable style={styles.profileBtn} onPress={() => setCurrentView('profile')}>
+                <Text style={styles.profileBtnText}>{hasProfile ? 'View Profile' : 'Create Profile'}</Text>
+              </Pressable>
+            </>
           )}
-          <Pressable style={styles.profileBtn} onPress={() => setCurrentView('profile')}>
-            <Text style={styles.profileBtnText}>{hasProfile ? 'View Profile' : 'Create Profile'}</Text>
-          </Pressable>
         </View>
 
         <View style={styles.controlsRow}>
           <GroupedDropdown
-            label="Size"
+            label="View"
             groups={METRIC_GROUPS}
             selected={selectedMetric}
             onSelect={(key) => {
@@ -534,7 +639,7 @@ function AppContent() {
             }}
             disabledKeys={selectedAlbum ? SONG_DISABLED_METRICS : []}
           />
-          <Dropdown label="Sort" options={selectedAlbum ? SONG_SORT_OPTIONS : SORT_OPTIONS} selected={sortBy} onSelect={setSortBy} disabledKeys={selectedMetric === "default" ? ["value"] : []} />
+          <Dropdown label="Sort" options={getSortOptions(currentMetric, currentSubLabel, !selectedAlbum)} selected={sortBy} onSelect={setSortBy} disabledKeys={selectedMetric === "default" ? ["value"] : []} />
         </View>
 
         <View style={[styles.treemapContainer, { width: treemapWidth, height: treemapHeight }]}>
@@ -584,15 +689,107 @@ function AppContent() {
   );
 }
 
-// Wrap with SubscriptionProvider
 export default function App() {
-  // TODO: Get actual userId from auth when implemented
-  const userId = null; // Free tier by default until auth is set up
+  const initialize = useAuthStore((state) => state.initialize);
+  const user = useAuthStore((state) => state.user);
+  const authLoading = useAuthStore((state) => state.isLoading);
+  const authError = useAuthStore((state) => state.error);
+  const isAnonymous = useAuthStore((state) => state.user?.is_anonymous);
+  const checkSubscription = useSubscriptionStore((state) => state.checkStatus);
+  const isPremium = useSubscriptionStore((state) => state.isPremium);
+
+  const [showLinkPrompt, setShowLinkPrompt] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(null); // 'success' | 'cancelled' | null
+
+  // Initialize auth on app start
+  useEffect(() => {
+    initialize();
+  }, []);
+
+  // Check subscription when user changes
+  useEffect(() => {
+    if (user?.id) {
+      checkSubscription(user.id);
+    }
+  }, [user?.id]);
+
+  // Handle payment redirect
+  useEffect(() => {
+    const { payment } = getUrlParams();
+
+    if (payment === 'success') {
+      setPaymentStatus('success');
+      // Refresh subscription status
+      if (user?.id) {
+        // Small delay to allow webhook to process
+        setTimeout(() => {
+          checkSubscription(user.id);
+        }, 1500);
+      }
+      // Show link account prompt for anonymous users
+      if (isAnonymous) {
+        setTimeout(() => {
+          setShowLinkPrompt(true);
+        }, 2000);
+      }
+      clearUrlParams();
+    } else if (payment === 'cancelled') {
+      setPaymentStatus('cancelled');
+      clearUrlParams();
+      // Clear cancelled status after a moment
+      setTimeout(() => setPaymentStatus(null), 3000);
+    }
+  }, [user?.id, isAnonymous]);
+
+  // Show loading while auth initializes
+  if (authLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.accent.primary} />
+        <StatusBar style="light" />
+      </View>
+    );
+  }
+
+  // Show auth error if initialization failed
+  if (authError && !user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.errorIcon}>⚠️</Text>
+        <Text style={styles.errorTitle}>Connection Error</Text>
+        <Text style={styles.errorText}>{authError}</Text>
+        <Pressable style={styles.retryButton} onPress={() => initialize()}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </Pressable>
+        <StatusBar style="light" />
+      </View>
+    );
+  }
 
   return (
-    <SubscriptionProvider userId={userId}>
+    <>
       <AppContent />
-    </SubscriptionProvider>
+
+      {/* Payment success toast */}
+      {paymentStatus === 'success' && (
+        <View style={styles.toast}>
+          <Text style={styles.toastText}>Payment successful! Welcome to Premium.</Text>
+        </View>
+      )}
+
+      {/* Payment cancelled toast */}
+      {paymentStatus === 'cancelled' && (
+        <View style={[styles.toast, styles.toastWarning]}>
+          <Text style={styles.toastText}>Payment cancelled</Text>
+        </View>
+      )}
+
+      {/* Link account prompt (shows after successful payment for anonymous users) */}
+      <LinkAccountPrompt
+        visible={showLinkPrompt}
+        onDismiss={() => setShowLinkPrompt(false)}
+      />
+    </>
   );
 }
 
@@ -649,6 +846,48 @@ const styles = StyleSheet.create({
     color: colors.accent.primary,
     fontSize: 16,
     fontFamily: 'Outfit_600SemiBold',
+  },
+  albumNavContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  albumNavButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  albumNavButtonDisabled: {
+    opacity: 0.3,
+  },
+  albumNavButtonText: {
+    color: colors.accent.primary,
+    fontSize: 22,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  albumNavButtonTextDisabled: {
+    color: colors.text.muted,
+  },
+  albumNavTitle: {
+    flex: 0,
+    marginBottom: 0,
+    marginHorizontal: 8,
+    maxWidth: '60%',
+  },
+  backToAlbumsBtn: {
+    backgroundColor: colors.accent.primaryMuted,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.accent.primaryBorder,
+  },
+  backToAlbumsBtnText: {
+    fontFamily: 'JetBrainsMono_700Bold',
+    fontSize: 9,
+    color: colors.accent.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   controlsRow: {
     flexDirection: 'row',
@@ -997,5 +1236,58 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.accent.primary,
     fontFamily: 'JetBrainsMono_400Regular',
+  },
+
+  // Toast notifications
+  toast: {
+    position: 'absolute',
+    bottom: 40,
+    left: 20,
+    right: 20,
+    backgroundColor: colors.semantic.success,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  toastWarning: {
+    backgroundColor: colors.semantic.warning,
+  },
+  toastText: {
+    color: colors.text.inverse,
+    fontSize: 13,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+
+  // Error state
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 18,
+    color: colors.text.primary,
+    fontFamily: 'Outfit_600SemiBold',
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    fontFamily: 'Outfit_400Regular',
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 40,
+  },
+  retryButton: {
+    backgroundColor: colors.accent.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    fontSize: 14,
+    color: colors.text.inverse,
+    fontFamily: 'Outfit_600SemiBold',
   },
 });
