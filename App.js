@@ -8,6 +8,7 @@ import squarify from 'squarify';
 import { fetchAlbumsWithMetrics } from './lib/supabase';
 import ProfileBuilder from './components/ProfileBuilder';
 import { BlurredSection } from './components/PaywallBlur';
+import { loadProfile } from './lib/storage';
 import { SubscriptionProvider, useSubscription } from './contexts/SubscriptionContext';
 import { colors, getContrastColor, getOverlayColor } from './lib/theme';
 
@@ -365,6 +366,7 @@ function AppContent() {
   const [subModeIndex, setSubModeIndex] = useState(0);
   const [sortBy, setSortBy] = useState('date');
   const [currentView, setCurrentView] = useState('treemap'); // 'treemap' | 'profile'
+  const [hasProfile, setHasProfile] = useState(false);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isSmall = windowWidth < 380;
   const isMobile = windowWidth < 500;
@@ -389,6 +391,13 @@ function AppContent() {
     }
     loadData();
   }, []);
+
+  // Check if user has a profile
+  useEffect(() => {
+    loadProfile().then(profile => {
+      setHasProfile(profile && profile.topAlbums?.length > 0);
+    });
+  }, [currentView]); // Re-check when returning from profile builder
 
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded && !dataLoading) {
@@ -502,7 +511,7 @@ function AppContent() {
             <Text style={[styles.title, isSmall && styles.titleSmall, styles.titleCenter]}>Taylor Swift</Text>
           )}
           <Pressable style={styles.profileBtn} onPress={() => setCurrentView('profile')}>
-            <Text style={styles.profileBtnText}>Profile</Text>
+            <Text style={styles.profileBtnText}>{hasProfile ? 'View Profile' : 'Create Profile'}</Text>
           </Pressable>
         </View>
 
