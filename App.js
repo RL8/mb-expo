@@ -8,6 +8,7 @@ import squarify from 'squarify';
 import { fetchAlbumsWithMetrics } from './lib/supabase';
 import ProfileBuilder from './components/ProfileBuilder';
 import SharedProfileView from './components/SharedProfileView';
+import PremiumPage from './components/PremiumPage';
 import { BlurredSection } from './components/PaywallBlur';
 import LinkAccountPrompt from './components/LinkAccountPrompt';
 import { loadProfile } from './lib/storage';
@@ -155,32 +156,56 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
         </View>
         <Text style={styles.dropdownArrow}>{open ? '▲' : '▼'}</Text>
       </Pressable>
-      {open && (
-        <ScrollView style={styles.dropdownMenu} nestedScrollEnabled>
-          {groups.map(group => (
-            <View key={group.label}>
-              <Text style={styles.dropdownGroupLabel}>{group.label}</Text>
-              {group.metrics.map(option => {
-                const isDisabled = disabledKeys.includes(option.key);
-                return (
-                  <Pressable
-                    key={option.key}
-                    style={[styles.dropdownItem, selected === option.key && styles.dropdownItemActive, isDisabled && styles.dropdownItemDisabled]}
-                    onPress={() => !isDisabled && handleItemPress(option)}
-                  >
-                    <Text style={[styles.dropdownItemText, selected === option.key && styles.dropdownItemTextActive, isDisabled && styles.dropdownItemTextDisabled]}>
-                      {option.label}
-                    </Text>
-                    {option.subModes && selected === option.key && subLabel && (
-                      <Text style={styles.dropdownItemSubLabel}>({subLabel})</Text>
-                    )}
-                  </Pressable>
-                );
-              })}
+      <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.viewModalOverlay} onPress={() => setOpen(false)}>
+          <View style={styles.viewModalContent}>
+            <View style={styles.viewModalHeader}>
+              <Text style={styles.viewModalTitle}>Select {label}</Text>
+              <Pressable style={styles.viewModalClose} onPress={() => setOpen(false)}>
+                <Text style={styles.viewModalCloseText}>×</Text>
+              </Pressable>
             </View>
-          ))}
-        </ScrollView>
-      )}
+            <ScrollView style={styles.viewModalScroll} showsVerticalScrollIndicator={false}>
+              {groups.map(group => (
+                <View key={group.label} style={styles.viewModalGroup}>
+                  <Text style={styles.viewModalGroupTitle}>{group.label}</Text>
+                  <View style={styles.viewModalItems}>
+                    {group.metrics.map(option => {
+                      const isDisabled = disabledKeys.includes(option.key);
+                      const isSelected = selected === option.key;
+                      return (
+                        <Pressable
+                          key={option.key}
+                          style={[
+                            styles.viewModalItem,
+                            isSelected && styles.viewModalItemActive,
+                            isDisabled && styles.viewModalItemDisabled
+                          ]}
+                          onPress={() => !isDisabled && handleItemPress(option)}
+                        >
+                          <View style={styles.viewModalItemContent}>
+                            <Text style={[
+                              styles.viewModalItemText,
+                              isSelected && styles.viewModalItemTextActive,
+                              isDisabled && styles.viewModalItemTextDisabled
+                            ]}>
+                              {option.label}
+                            </Text>
+                            {option.subModes && isSelected && subLabel && (
+                              <Text style={styles.viewModalItemSubLabel}>tap to cycle: {subLabel}</Text>
+                            )}
+                          </View>
+                          {isSelected && <Text style={styles.viewModalCheck}>✓</Text>}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -422,7 +447,7 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
   );
 }
 
-function AnimatedTile({ item, metric, suffix, isSmall, index, showOrder, onPress, isTrackFive, isVault }) {
+function AnimatedTile({ item, metric, suffix, isSmall, index, showOrder, onPress, isTrackFive, isVault, isContentMetric }) {
   const textColor = getContrastColor(item.color);
   const width = item.x1 - item.x0;
   const height = item.y1 - item.y0;
@@ -431,6 +456,11 @@ function AnimatedTile({ item, metric, suffix, isSmall, index, showOrder, onPress
   const valueFontSize = Math.max(Math.min(width / 9, height / 5, isSmall ? 11 : 13), 9);
   const orderFontSize = Math.max(Math.min(width / 10, height / 6, 11), 8);
   const showOrderNumber = showOrder && width > 40 && height > 35;
+
+  // Content list display
+  const hasContentList = isContentMetric && item.contentList && item.contentList.length > 0;
+  const contentListFontSize = Math.max(Math.min(width / 12, height / 8, 10), 7);
+  const maxContentItems = Math.floor((height - 50) / 14); // Estimate how many items fit
 
   const animatedValues = useRef({
     left: new Animated.Value(item.x0),
@@ -460,10 +490,28 @@ function AnimatedTile({ item, metric, suffix, isSmall, index, showOrder, onPress
       <Text style={[styles.tileName, { color: textColor, fontSize: nameFontSize }]} numberOfLines={2} adjustsFontSizeToFit>
         {item.name}
       </Text>
-      {showValue && (
+      {showValue && !hasContentList && (
         <Text style={[styles.tileValue, { color: textColor, fontSize: valueFontSize }]}>
           {item.metricValue.toLocaleString()}{suffix}
         </Text>
+      )}
+      {hasContentList && width > 60 && height > 60 && (
+        <View style={styles.tileContentList}>
+          {item.contentList.slice(0, Math.max(maxContentItems, 1)).map((contentItem, idx) => (
+            <Text
+              key={idx}
+              style={[styles.tileContentItem, { color: textColor, fontSize: contentListFontSize }]}
+              numberOfLines={1}
+            >
+              {contentItem}
+            </Text>
+          ))}
+          {item.contentList.length > maxContentItems && maxContentItems > 0 && (
+            <Text style={[styles.tileContentMore, { color: textColor, fontSize: contentListFontSize }]}>
+              +{item.contentList.length - maxContentItems} more
+            </Text>
+          )}
+        </View>
       )}
     </>
   );
@@ -591,6 +639,20 @@ function AppContent() {
       return item[actualDataKey] || 0;
     };
 
+    // Helper to get content list for display in tiles
+    const getContentList = (item, dataKey) => {
+      switch (dataKey) {
+        case 'vaultTracks':
+          return item.vaultTracksList || [];
+        case 'coWriterCount':
+          return item.coWritersList || [];
+        case 'themeCount':
+          return item.themesList || [];
+        default:
+          return [];
+      }
+    };
+
     // Drill-down mode: show songs from selected album
     if (selectedAlbum) {
       const albumSongs = songs.filter(s => s.album_id === selectedAlbum.id);
@@ -613,6 +675,8 @@ function AppContent() {
           metricValue,
           trackNumber: song.trackNumber,
           isVault: song.vaultTracks > 0,
+          // Content lists for display
+          contentList: getContentList(song, actualDataKey),
         };
       });
 
@@ -638,6 +702,8 @@ function AppContent() {
         value: selectedMetric === 'default' ? 100 : Math.max(metricValue || 1, 1),
         color: album.color || colors.fallback,
         metricValue,
+        // Content lists for display
+        contentList: getContentList(album, actualDataKey),
       };
     });
 
@@ -783,6 +849,7 @@ function AppContent() {
               showOrder={sortBy === 'value' && selectedMetric !== 'default'}
               isTrackFive={selectedAlbum && item.trackNumber === 5}
               isVault={selectedAlbum && item.isVault}
+              isContentMetric={['vaultTracks', 'coWriterCount', 'themeCount'].includes(actualDataKey)}
               onPress={(tileItem) => {
                 if (selectedAlbum) {
                   // In album view - show song detail
@@ -1150,6 +1217,109 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Outfit_600SemiBold',
   },
+  // View modal styles (larger selection area)
+  viewModalOverlay: {
+    flex: 1,
+    backgroundColor: colors.bg.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  viewModalContent: {
+    backgroundColor: colors.bg.card,
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 360,
+    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: colors.border.medium,
+  },
+  viewModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.subtle,
+  },
+  viewModalTitle: {
+    fontSize: 18,
+    fontFamily: 'Outfit_600SemiBold',
+    color: colors.text.primary,
+  },
+  viewModalClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surface.medium,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewModalCloseText: {
+    fontSize: 20,
+    color: colors.text.secondary,
+  },
+  viewModalScroll: {
+    padding: 16,
+  },
+  viewModalGroup: {
+    marginBottom: 20,
+  },
+  viewModalGroupTitle: {
+    fontSize: 11,
+    fontFamily: 'JetBrainsMono_700Bold',
+    color: colors.accent.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  viewModalItems: {
+    gap: 8,
+  },
+  viewModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface.medium,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  viewModalItemActive: {
+    backgroundColor: colors.accent.primaryMuted,
+    borderColor: colors.accent.primaryBorder,
+  },
+  viewModalItemDisabled: {
+    opacity: 0.4,
+  },
+  viewModalItemContent: {
+    flex: 1,
+  },
+  viewModalItemText: {
+    fontSize: 15,
+    fontFamily: 'Outfit_500Medium',
+    color: colors.text.primary,
+  },
+  viewModalItemTextActive: {
+    color: colors.accent.primary,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  viewModalItemTextDisabled: {
+    color: colors.text.disabled,
+  },
+  viewModalItemSubLabel: {
+    fontSize: 11,
+    fontFamily: 'Outfit_400Regular',
+    color: colors.text.muted,
+    marginTop: 2,
+  },
+  viewModalCheck: {
+    fontSize: 16,
+    color: colors.accent.primary,
+    marginLeft: 8,
+  },
   controlsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -1302,6 +1472,23 @@ const styles = StyleSheet.create({
   tileOrderText: {
     fontFamily: 'JetBrainsMono_700Bold',
     fontWeight: '700',
+  },
+  tileContentList: {
+    marginTop: 4,
+    alignItems: 'center',
+    width: '100%',
+  },
+  tileContentItem: {
+    fontFamily: 'Outfit_400Regular',
+    textAlign: 'center',
+    opacity: 0.9,
+    lineHeight: 14,
+  },
+  tileContentMore: {
+    fontFamily: 'JetBrainsMono_400Regular',
+    textAlign: 'center',
+    opacity: 0.7,
+    marginTop: 2,
   },
   footer: {
     paddingVertical: 10,
