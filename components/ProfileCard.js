@@ -60,7 +60,7 @@ export default function ProfileCard({ profile, albums, songsByAlbum, onClose }) 
         songIds.forEach(songId => {
           const song = albumSongs.find(s => s.id === songId);
           if (song) {
-            shareData.songNames[songId] = song.title;
+            shareData.songNames[songId] = song.name;
           }
         });
       });
@@ -182,7 +182,7 @@ export default function ProfileCard({ profile, albums, songsByAlbum, onClose }) 
                         </Text>
                       </View>
                       <Text style={styles.songName} numberOfLines={1}>
-                        {song.title}
+                        {song.name}
                       </Text>
                     </View>
                   ))}
@@ -202,7 +202,7 @@ export default function ProfileCard({ profile, albums, songsByAlbum, onClose }) 
                 >
                   <Text style={styles.lyricLine}>"{line}"</Text>
                   <Text style={styles.lyricAttribution}>
-                    — {song.title}
+                    — {song.name}
                   </Text>
                 </View>
               ))}

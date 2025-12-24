@@ -93,7 +93,7 @@ export default function OnboardingLyricPicker({
           Lyric {currentIndex + 1} of {totalSongs}
         </Text>
         <Text style={[styles.songTitle, { color: textColor }]} numberOfLines={1}>
-          {song?.title}
+          {song?.name}
         </Text>
         <Text style={[styles.albumName, { color: textColor, opacity: 0.8 }]}>
           from {album?.display_name}

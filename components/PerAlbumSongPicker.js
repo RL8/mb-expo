@@ -54,7 +54,7 @@ export default function PerAlbumSongPicker({
 
   // Sort songs by track number
   const sortedSongs = useMemo(() => {
-    return [...songs].sort((a, b) => (a.track_number || 0) - (b.track_number || 0));
+    return [...songs].sort((a, b) => (a.trackNumber || 0) - (b.trackNumber || 0));
   }, [songs]);
 
   const canProceed = selectedSongs.length === 3;
@@ -125,7 +125,7 @@ export default function PerAlbumSongPicker({
                   styles.numberText,
                   isSelected && { color: getContrastColor(album.color) }
                 ]}>
-                  {isSelected ? rank : song.track_number || '–'}
+                  {isSelected ? rank : song.trackNumber || '–'}
                 </Text>
               </View>
 
@@ -135,9 +135,9 @@ export default function PerAlbumSongPicker({
                   styles.songName,
                   isSelected && styles.songNameSelected
                 ]} numberOfLines={1}>
-                  {song.title}
+                  {song.name}
                 </Text>
-                {song.is_vault_track && (
+                {song.vaultTracks > 0 && (
                   <Text style={styles.vaultBadge}>VAULT</Text>
                 )}
               </View>
@@ -169,7 +169,7 @@ export default function PerAlbumSongPicker({
                     </Text>
                   </View>
                   <Text style={styles.selectionName} numberOfLines={1}>
-                    {song?.title}
+                    {song?.name}
                   </Text>
                 </View>
               );
