@@ -14,26 +14,21 @@ import { useSubscriptionStore } from '../stores/subscriptionStore';
 import { colors } from '../lib/theme';
 
 // Web-specific imports (loaded dynamically)
-let loadStripe, EmbeddedCheckoutProvider, EmbeddedCheckout;
+let loadStripe, Elements, PaymentElement, useStripeWeb, useElements;
 if (Platform.OS === 'web') {
   const stripeJs = require('@stripe/stripe-js');
   const stripeReact = require('@stripe/react-stripe-js');
   loadStripe = stripeJs.loadStripe;
-  EmbeddedCheckoutProvider = stripeReact.EmbeddedCheckoutProvider;
-  EmbeddedCheckout = stripeReact.EmbeddedCheckout;
+  Elements = stripeReact.Elements;
+  PaymentElement = stripeReact.PaymentElement;
+  useStripeWeb = stripeReact.useStripe;
+  useElements = stripeReact.useElements;
 }
 
-// Mobile-specific imports
-let StripeProvider, useStripe;
-if (Platform.OS !== 'web') {
-  try {
-    const stripeNative = require('@stripe/stripe-react-native');
-    StripeProvider = stripeNative.StripeProvider;
-    useStripe = stripeNative.useStripe;
-  } catch (e) {
-    console.log('Stripe React Native not available');
-  }
-}
+// Mobile-specific imports - disabled for now (shows fallback UI)
+// Native Stripe causes bundler errors on web
+let StripeProvider = null;
+let useStripe = null;
 
 const FEATURES = [
   {
@@ -58,6 +53,74 @@ const FEATURES = [
   },
 ];
 
+// Payment Form Component (inside Elements provider)
+function PaymentForm({ onSuccess }) {
+  const stripe = useStripeWeb();
+  const elements = useElements();
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async () => {
+    if (!stripe || !elements) return;
+
+    setProcessing(true);
+    setError(null);
+
+    try {
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        throw new Error(submitError.message);
+      }
+
+      const { error: confirmError } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/?payment=success`,
+        },
+      });
+
+      if (confirmError) {
+        throw new Error(confirmError.message);
+      }
+    } catch (err) {
+      setError(err.message);
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <View style={styles.paymentFormContainer}>
+      <View style={styles.paymentElementWrapper}>
+        <PaymentElement
+          options={{
+            layout: 'tabs',
+          }}
+        />
+      </View>
+
+      {error && (
+        <View style={styles.paymentError}>
+          <Text style={styles.paymentErrorText}>{error}</Text>
+        </View>
+      )}
+
+      <Pressable
+        style={[styles.submitButton, processing && styles.submitButtonDisabled]}
+        onPress={handleSubmit}
+        disabled={processing || !stripe}
+      >
+        {processing ? (
+          <ActivityIndicator color={colors.text.inverse} size="small" />
+        ) : (
+          <Text style={styles.submitButtonText}>Pay $13.13/year</Text>
+        )}
+      </Pressable>
+
+      <Text style={styles.secureNote}>Secure payment powered by Stripe</Text>
+    </View>
+  );
+}
+
 // Web Checkout Component
 function WebCheckout({ onSuccess, onClose }) {
   const [stripePromise] = useState(() =>
@@ -68,21 +131,24 @@ function WebCheckout({ onSuccess, onClose }) {
   const [error, setError] = useState(null);
 
   const userId = useAuthStore((state) => state.user?.id);
+  const userEmail = useAuthStore((state) => state.user?.email);
 
   useEffect(() => {
-    async function createSession() {
+    async function createSubscription() {
       try {
-        const response = await fetch('/api/create-checkout-session', {
+        const apiBase = process.env.EXPO_PUBLIC_API_URL || '';
+        const response = await fetch(`${apiBase}/api/create-subscription`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             user_id: userId,
-            embedded: true, // Request embedded mode
+            email: userEmail,
           }),
         });
 
         if (!response.ok) {
-          throw new Error('Failed to create checkout session');
+          const data = await response.json();
+          throw new Error(data.error || 'Failed to create subscription');
         }
 
         const data = await response.json();
@@ -95,13 +161,9 @@ function WebCheckout({ onSuccess, onClose }) {
     }
 
     if (userId) {
-      createSession();
+      createSubscription();
     }
-  }, [userId]);
-
-  const handleComplete = useCallback(() => {
-    onSuccess?.();
-  }, [onSuccess]);
+  }, [userId, userEmail]);
 
   if (loading) {
     return (
@@ -127,17 +189,48 @@ function WebCheckout({ onSuccess, onClose }) {
     return null;
   }
 
+  const appearance = {
+    theme: 'night',
+    variables: {
+      colorPrimary: colors.accent.primary,
+      colorBackground: colors.bg.card,
+      colorText: colors.text.primary,
+      colorTextSecondary: colors.text.secondary,
+      colorDanger: colors.semantic.error,
+      fontFamily: 'Outfit, system-ui, sans-serif',
+      borderRadius: '12px',
+      spacingUnit: '4px',
+    },
+    rules: {
+      '.Input': {
+        backgroundColor: colors.surface.medium,
+        borderColor: colors.border.subtle,
+      },
+      '.Input:focus': {
+        borderColor: colors.accent.primary,
+      },
+      '.Tab': {
+        backgroundColor: colors.surface.medium,
+        borderColor: colors.border.subtle,
+      },
+      '.Tab--selected': {
+        backgroundColor: colors.accent.primaryMuted,
+        borderColor: colors.accent.primary,
+      },
+    },
+  };
+
   return (
     <View style={styles.checkoutContainer}>
-      <EmbeddedCheckoutProvider
+      <Elements
         stripe={stripePromise}
         options={{
           clientSecret,
-          onComplete: handleComplete,
+          appearance,
         }}
       >
-        <EmbeddedCheckout />
-      </EmbeddedCheckoutProvider>
+        <PaymentForm onSuccess={onSuccess} />
+      </Elements>
     </View>
   );
 }
@@ -561,10 +654,39 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  // Payment form
+  paymentFormContainer: {
+    flex: 1,
+  },
+  paymentElementWrapper: {
+    marginBottom: 20,
+  },
+  submitButton: {
+    backgroundColor: colors.accent.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    color: colors.text.inverse,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  secureNote: {
+    fontSize: 12,
+    color: colors.text.muted,
+    fontFamily: 'Outfit_400Regular',
+    textAlign: 'center',
+  },
+
   // Checkout states
   checkoutContainer: {
     flex: 1,
-    minHeight: 400,
+    minHeight: 300,
   },
   checkoutLoading: {
     padding: 40,

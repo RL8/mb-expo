@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, StyleSheet, LogBox } from 'react-native';
 import { Stack, useRouter, usePathname, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts, Outfit_300Light, Outfit_400Regular, Outfit_600SemiBold, Outfit_800ExtraBold } from '@expo-google-fonts/outfit';
@@ -9,6 +9,15 @@ import { useAuthStore } from '../stores/authStore';
 import { useSubscriptionStore } from '../stores/subscriptionStore';
 import LinkAccountPrompt from '../components/LinkAccountPrompt';
 import { colors } from '../lib/theme';
+
+// Suppress noisy dev warnings
+if (__DEV__) {
+  LogBox.ignoreLogs([
+    'Download the React DevTools',
+    'You may test your Stripe.js',
+    'Blocked aria-hidden',
+  ]);
+}
 
 SplashScreen.preventAutoHideAsync();
 

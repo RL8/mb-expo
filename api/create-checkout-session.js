@@ -3,6 +3,16 @@ const Stripe = require('stripe');
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 module.exports = async (req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Only allow POST
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -25,7 +35,7 @@ module.exports = async (req, res) => {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: process.env.EXPO_PUBLIC_STRIPE_PREMIUM_PRICE_ID,
+          price: process.env.EXPO_PUBLIC_STRIPE_PREMIUM_PRICE_ID?.trim(),
           quantity: 1,
         },
       ],
