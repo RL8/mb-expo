@@ -473,6 +473,16 @@ function AppContent() {
   const treemapData = useMemo(() => {
     if (treemapWidth <= 0 || treemapHeight <= 0) return [];
 
+    // Helper to get metric value, including calculated vocabularyRichness
+    const getMetricValue = (item) => {
+      if (actualDataKey === 'vocabularyRichness') {
+        const total = item.wordCount || 0;
+        const unique = item.uniqueWordCount || 0;
+        return total > 0 ? Math.round((unique / total) * 100) : 0;
+      }
+      return item[actualDataKey] || 0;
+    };
+
     // Drill-down mode: show songs from selected album
     if (selectedAlbum) {
       const albumSongs = songs.filter(s => s.album_id === selectedAlbum.id);
@@ -482,16 +492,19 @@ function AppContent() {
       if (sortBy === 'date') {
         sortedSongs.sort((a, b) => (a.trackNumber || 0) - (b.trackNumber || 0));
       } else if (sortBy === 'value' && selectedMetric !== 'default') {
-        sortedSongs.sort((a, b) => (b[actualDataKey] || 0) - (a[actualDataKey] || 0));
+        sortedSongs.sort((a, b) => getMetricValue(b) - getMetricValue(a));
       }
 
-      const data = sortedSongs.map(song => ({
-        id: song.id,
-        name: song.name,
-        value: selectedMetric === 'default' ? 100 : Math.max(song[actualDataKey] || 1, 1),
-        color: song.color || selectedAlbum.color || colors.fallback,
-        metricValue: song[actualDataKey] || 0,
-      }));
+      const data = sortedSongs.map(song => {
+        const metricValue = getMetricValue(song);
+        return {
+          id: song.id,
+          name: song.name,
+          value: selectedMetric === 'default' ? 100 : Math.max(metricValue || 1, 1),
+          color: song.color || selectedAlbum.color || colors.fallback,
+          metricValue,
+        };
+      });
 
       const container = { x0: 0, y0: 0, x1: treemapWidth, y1: treemapHeight };
       return squarify(data, container);
@@ -504,16 +517,19 @@ function AppContent() {
     if (sortBy === 'date') {
       sortedAlbums.sort((a, b) => new Date(a.official_release_date) - new Date(b.official_release_date));
     } else if (sortBy === 'value' && selectedMetric !== 'default') {
-      sortedAlbums.sort((a, b) => (b[actualDataKey] || 0) - (a[actualDataKey] || 0));
+      sortedAlbums.sort((a, b) => getMetricValue(b) - getMetricValue(a));
     }
 
-    const data = sortedAlbums.map(album => ({
-      id: album.id,
-      name: album.display_name,
-      value: selectedMetric === 'default' ? 100 : Math.max(album[actualDataKey] || 1, 1),
-      color: album.color || colors.fallback,
-      metricValue: album[actualDataKey] || 0,
-    }));
+    const data = sortedAlbums.map(album => {
+      const metricValue = getMetricValue(album);
+      return {
+        id: album.id,
+        name: album.display_name,
+        value: selectedMetric === 'default' ? 100 : Math.max(metricValue || 1, 1),
+        color: album.color || colors.fallback,
+        metricValue,
+      };
+    });
 
     const container = { x0: 0, y0: 0, x1: treemapWidth, y1: treemapHeight };
     return squarify(data, container);
