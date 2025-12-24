@@ -332,7 +332,7 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose }) {
   );
 }
 
-function AnimatedTile({ item, metric, isSmall, index, showOrder, onPress }) {
+function AnimatedTile({ item, metric, suffix, isSmall, index, showOrder, onPress }) {
   const textColor = getContrastColor(item.color);
   const width = item.x1 - item.x0;
   const height = item.y1 - item.y0;
@@ -372,7 +372,7 @@ function AnimatedTile({ item, metric, isSmall, index, showOrder, onPress }) {
       </Text>
       {showValue && (
         <Text style={[styles.tileValue, { color: textColor, fontSize: valueFontSize }]}>
-          {item.metricValue.toLocaleString()}{metric.suffix}
+          {item.metricValue.toLocaleString()}{suffix}
         </Text>
       )}
     </>
@@ -462,12 +462,11 @@ function AppContent() {
   const loading = !fontsLoaded || dataLoading;
 
   const currentMetric = ALL_METRICS.find(m => m.key === selectedMetric);
-  const actualDataKey = currentMetric?.subModes
-    ? currentMetric.subModes[subModeIndex].key
-    : selectedMetric;
-  const currentSubLabel = currentMetric?.subModes
-    ? currentMetric.subModes[subModeIndex].subLabel
-    : null;
+  const currentSubMode = currentMetric?.subModes?.[subModeIndex];
+  const actualDataKey = currentSubMode?.key || selectedMetric;
+  const currentSubLabel = currentSubMode?.subLabel || null;
+  // Use subMode suffix if available, otherwise fall back to metric suffix
+  const currentSuffix = currentSubMode?.suffix ?? currentMetric?.suffix ?? '';
   const treemapWidth = windowWidth - (padding * 2);
   const treemapHeight = Math.max(windowHeight - headerHeight, 300);
 
@@ -648,6 +647,7 @@ function AppContent() {
               key={item.id || item.name}
               item={item}
               metric={currentMetric}
+              suffix={currentSuffix}
               isSmall={isSmall}
               index={index}
               showOrder={sortBy === 'value' && selectedMetric !== 'default'}
