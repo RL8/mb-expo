@@ -31,7 +31,16 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# backup files
+*.sql
+
+# planning docs (temporary)
+*IMPLEMENTATION_PLAN*.md
+*ANALYSIS*.md
+feedback*
 
 # typescript
 *.tsbuildinfo
