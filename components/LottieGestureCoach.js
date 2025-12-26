@@ -789,10 +789,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border.medium,
-    shadowColor: colors.accent.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 24,
+    boxShadow: '0 8px 24px rgba(56, 189, 248, 0.3)',
     elevation: 16,
   },
 

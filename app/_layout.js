@@ -132,8 +132,9 @@ export default function RootLayout() {
           headerShown: false,
           contentStyle: { backgroundColor: colors.bg.primary },
           animation: 'fade',
-          // Prevent focus traps by properly managing screen lifecycle
+          // Properly manage screen lifecycle and focus
           freezeOnBlur: true,
+          detachInactiveScreens: true,
           animationTypeForReplace: 'push',
         }}
       >
