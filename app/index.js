@@ -74,7 +74,9 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
 
   const closeModal = () => {
     document.activeElement?.blur?.();
-    setOpen(false);
+    requestAnimationFrame(() => {
+      setOpen(false);
+    });
   };
 
   const handleItemPress = (option) => {
@@ -199,7 +201,9 @@ function InfoButton({ metricKey }) {
 
   const closeModal = () => {
     document.activeElement?.blur?.();
-    setVisible(false);
+    requestAnimationFrame(() => {
+      setVisible(false);
+    });
   };
 
   return (

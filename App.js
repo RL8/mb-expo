@@ -139,7 +139,9 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
 
   const closeModal = () => {
     document.activeElement?.blur?.();
-    setOpen(false);
+    requestAnimationFrame(() => {
+      setOpen(false);
+    });
   };
 
   const handleItemPress = (option) => {
@@ -296,7 +298,9 @@ function InfoButton({ metricKey }) {
 
   const closeModal = () => {
     document.activeElement?.blur?.();
-    setVisible(false);
+    requestAnimationFrame(() => {
+      setVisible(false);
+    });
   };
 
   return (
@@ -325,7 +329,9 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose, onNavi
 
   const handleClose = () => {
     document.activeElement?.blur?.();
-    onClose();
+    requestAnimationFrame(() => {
+      onClose();
+    });
   };
 
   if (!song) return null;

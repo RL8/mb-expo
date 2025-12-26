@@ -35,7 +35,9 @@ export default function PaywallOverlay({
 
   const handleClose = () => {
     document.activeElement?.blur?.();
-    onClose();
+    requestAnimationFrame(() => {
+      onClose();
+    });
   };
 
   const handleUpgrade = () => {

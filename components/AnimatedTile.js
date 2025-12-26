@@ -80,9 +80,9 @@ function AnimatedTile({
     backgroundColor: item.color,
   };
 
-  // Track 5 glow effect
+  // Track 5 subtle gradient background
   const track5Style = isTrackFive ? {
-    boxShadow: '0 0 12px rgba(251, 191, 36, 0.8)',
+    backgroundImage: 'linear-gradient(135deg, rgba(251, 191, 36, 0.4) 0%, rgba(251, 191, 36, 0.16) 30%, transparent 60%)',
   } : {};
 
   // Vault track dashed border
@@ -120,7 +120,7 @@ function AnimatedTile({
             style={[styles.tileName, { color: textColor, fontSize: nameFontSize }]}
             numberOfLines={2}
           >
-            {item.name}
+            {item.trackNumber ? `${item.trackNumber}. ${item.name}` : item.name}
           </Text>
 
           {/* Metric value - always show when applicable */}

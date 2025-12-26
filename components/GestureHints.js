@@ -178,7 +178,9 @@ export function GestureHintTooltip({
 
   const handleDismiss = () => {
     document.activeElement?.blur?.();
-    onDismiss();
+    requestAnimationFrame(() => {
+      onDismiss();
+    });
   };
 
   return (
@@ -218,7 +220,9 @@ export function GestureOnboarding({ visible, onComplete }) {
 
   const handleComplete = () => {
     document.activeElement?.blur?.();
-    onComplete();
+    requestAnimationFrame(() => {
+      onComplete();
+    });
   };
 
   const handleNext = () => {

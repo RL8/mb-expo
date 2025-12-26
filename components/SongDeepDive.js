@@ -47,7 +47,9 @@ function Tag({ text, color }) {
 export default function SongDeepDive({ visible, song, album, songs, onClose }) {
   const handleClose = () => {
     document.activeElement?.blur?.();
-    onClose();
+    requestAnimationFrame(() => {
+      onClose();
+    });
   };
 
   if (!song || !visible) return null;

@@ -9,7 +9,9 @@ const CHECKOUT_URL = 'https://buy.stripe.com/test_fZe5o52dDbkQ2fS4gj'; // Replac
 export default function UpgradeModal({ visible, onClose }) {
   const handleClose = () => {
     document.activeElement?.blur?.();
-    onClose();
+    requestAnimationFrame(() => {
+      onClose();
+    });
   };
 
   const handleUpgrade = () => {

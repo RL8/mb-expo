@@ -33,7 +33,9 @@ export default function LinkAccountPrompt({ visible, onDismiss, prefillEmail = '
       // Auto-dismiss after success
       setTimeout(() => {
         document.activeElement?.blur?.();
-        onDismiss?.();
+        requestAnimationFrame(() => {
+          onDismiss?.();
+        });
       }, 2000);
     } catch (err) {
       setError(err.message || 'Failed to link email');
@@ -44,7 +46,9 @@ export default function LinkAccountPrompt({ visible, onDismiss, prefillEmail = '
 
   const handleSkip = () => {
     document.activeElement?.blur?.();
-    onDismiss?.();
+    requestAnimationFrame(() => {
+      onDismiss?.();
+    });
   };
 
   if (success) {

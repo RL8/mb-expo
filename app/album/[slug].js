@@ -52,7 +52,10 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
 
   const closeModal = () => {
     document.activeElement?.blur?.();
-    setOpen(false);
+    // Delay close to ensure blur completes before modal hides
+    requestAnimationFrame(() => {
+      setOpen(false);
+    });
   };
 
   const handleItemPress = (option) => {
