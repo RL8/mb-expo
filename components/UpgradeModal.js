@@ -12,11 +12,10 @@ export default function UpgradeModal({ visible, onClose }) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} accessibilityViewIsModal={true}>
       <Pressable
         style={styles.overlay}
         onPress={onClose}
-        accessibilityViewIsModal={true}
         accessibilityLabel="Upgrade to premium dialog"
       >
         <Pressable

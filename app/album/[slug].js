@@ -66,7 +66,7 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
         </View>
         <Text style={styles.dropdownArrow}>{open ? '▲' : '▼'}</Text>
       </Pressable>
-      <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)}>
+      <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)} accessibilityViewIsModal={true}>
         <Pressable style={styles.modalOverlay} onPress={() => setOpen(false)}>
           <View style={styles.modalContent}>
             <ScrollView style={styles.modalScroll}>

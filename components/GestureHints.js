@@ -182,6 +182,7 @@ export function GestureHintTooltip({
       animationType="fade"
       visible={visible}
       onRequestClose={onDismiss}
+      accessibilityViewIsModal={true}
     >
       <Pressable style={styles.tooltipOverlay} onPress={onDismiss}>
         <Animated.View
@@ -234,6 +235,7 @@ export function GestureOnboarding({ visible, onComplete }) {
       animationType="fade"
       visible={visible}
       onRequestClose={handleSkip}
+      accessibilityViewIsModal={true}
     >
       <View style={styles.onboardingOverlay}>
         <Animated.View

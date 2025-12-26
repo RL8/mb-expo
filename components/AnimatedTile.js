@@ -34,7 +34,8 @@ function AnimatedTile({
   // Content list display
   const hasContentList = isContentMetric && item.contentList && item.contentList.length > 0;
   const contentListFontSize = Math.max(Math.min(width / 12, height / 8, 10), 7);
-  const maxContentItems = Math.floor((height - 50) / 14);
+  // Account for name (~30px), value (~20px), padding (16px) when calculating available space
+  const maxContentItems = Math.floor((height - 66) / 14);
 
   // Shared value for press animation
   const pressed = useSharedValue(0);
@@ -122,15 +123,15 @@ function AnimatedTile({
             {item.name}
           </Text>
 
-          {/* Metric value */}
-          {showValue && !hasContentList && (
+          {/* Metric value - always show when applicable */}
+          {showValue && (
             <Text style={[styles.tileValue, { color: textColor, fontSize: valueFontSize }]}>
               {item.metricValue?.toLocaleString()}{suffix}
             </Text>
           )}
 
-          {/* Content list */}
-          {hasContentList && width > 60 && height > 60 && (
+          {/* Content list - show below value when space allows */}
+          {hasContentList && width > 60 && height > 70 && (
             <View style={styles.tileContentList}>
               {item.contentList.slice(0, Math.max(maxContentItems, 1)).map((contentItem, idx) => (
                 <Text

@@ -47,10 +47,9 @@ export default function LinkAccountPrompt({ visible, onDismiss, prefillEmail = '
 
   if (success) {
     return (
-      <Modal visible={visible} transparent animationType="fade">
+      <Modal visible={visible} transparent animationType="fade" accessibilityViewIsModal={true}>
         <View
           style={styles.overlay}
-          accessibilityViewIsModal={true}
           accessibilityLabel="Account secured confirmation"
         >
           <View style={styles.modal}>
@@ -72,10 +71,10 @@ export default function LinkAccountPrompt({ visible, onDismiss, prefillEmail = '
       animationType="fade"
       onRequestClose={handleSkip}
       statusBarTranslucent
+      accessibilityViewIsModal={true}
     >
       <View
         style={styles.overlay}
-        accessibilityViewIsModal={true}
         accessibilityLabel="Link account dialog"
       >
         <View style={styles.modal}>

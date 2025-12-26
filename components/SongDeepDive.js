@@ -84,7 +84,7 @@ export default function SongDeepDive({ visible, song, album, songs, onClose }) {
   }[song.emotionalIntensity] || 'Moderate';
 
   return (
-    <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
+    <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose} accessibilityViewIsModal={true}>
       <View style={styles.overlay}>
         <View style={styles.container}>
           {/* Header */}

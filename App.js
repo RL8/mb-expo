@@ -156,7 +156,7 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
         </View>
         <Text style={styles.dropdownArrow}>{open ? '▲' : '▼'}</Text>
       </Pressable>
-      <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)}>
+      <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)} accessibilityViewIsModal={true}>
         <Pressable style={styles.viewModalOverlay} onPress={() => setOpen(false)}>
           <View style={styles.viewModalContent}>
             <View style={styles.viewModalHeader}>
@@ -294,7 +294,7 @@ function InfoButton({ metricKey }) {
       <Pressable style={styles.infoButton} onPress={() => setVisible(true)}>
         <Text style={styles.infoButtonText}>ⓘ</Text>
       </Pressable>
-      <Modal transparent animationType="fade" visible={visible} onRequestClose={() => setVisible(false)}>
+      <Modal transparent animationType="fade" visible={visible} onRequestClose={() => setVisible(false)} accessibilityViewIsModal={true}>
         <Pressable style={styles.infoModalOverlay} onPress={() => setVisible(false)}>
           <View style={styles.infoModalContent}>
             <Text style={styles.infoModalTitle}>{info.title}</Text>
@@ -345,7 +345,7 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose, onNavi
   const suffix = metric?.suffix || '';
 
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal transparent animationType="fade" onRequestClose={onClose} accessibilityViewIsModal={true}>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <Pressable style={styles.modalContent} onPress={e => e.stopPropagation()}>
           <ScrollView showsVerticalScrollIndicator={false}>

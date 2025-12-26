@@ -91,7 +91,7 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
         </View>
         <Text style={styles.dropdownArrow}>{open ? '▲' : '▼'}</Text>
       </Pressable>
-      <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)}>
+      <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)} accessibilityViewIsModal={true}>
         <Pressable style={styles.modalOverlay} onPress={() => setOpen(false)}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -197,7 +197,7 @@ function InfoButton({ metricKey }) {
       <Pressable style={styles.infoButton} onPress={() => setVisible(true)}>
         <Text style={styles.infoButtonText}>ⓘ</Text>
       </Pressable>
-      <Modal transparent animationType="fade" visible={visible} onRequestClose={() => setVisible(false)}>
+      <Modal transparent animationType="fade" visible={visible} onRequestClose={() => setVisible(false)} accessibilityViewIsModal={true}>
         <Pressable style={styles.modalOverlay} onPress={() => setVisible(false)}>
           <View style={styles.infoModalContent}>
             <Text style={styles.infoModalTitle}>{info.title}</Text>
@@ -256,6 +256,20 @@ export default function HomeScreen() {
       return item[actualDataKey] || 0;
     };
 
+    // Helper to get content list for display in tiles
+    const getContentList = (item, dataKey) => {
+      switch (dataKey) {
+        case 'vaultTracks':
+          return item.vaultTracksList || [];
+        case 'coWriterCount':
+          return item.coWritersList || [];
+        case 'themeCount':
+          return item.themesList || [];
+        default:
+          return [];
+      }
+    };
+
     let sortedAlbums = [...albums];
     if (sortBy === 'date') {
       sortedAlbums.sort((a, b) => new Date(a.official_release_date) - new Date(b.official_release_date));
@@ -270,6 +284,7 @@ export default function HomeScreen() {
       value: selectedMetric === 'default' ? 100 : Math.max(getMetricValue(album) || 1, 1),
       color: album.color || colors.fallback,
       metricValue: getMetricValue(album),
+      contentList: getContentList(album, actualDataKey),
     }));
 
     const container = { x0: 0, y0: 0, x1: treemapWidth, y1: treemapHeight };
@@ -352,6 +367,7 @@ export default function HomeScreen() {
               isSmall={isSmall}
               index={index}
               showOrder={sortBy === 'value' && selectedMetric !== 'default'}
+              isContentMetric={['vaultTracks', 'coWriterCount', 'themeCount'].includes(actualDataKey)}
               onPress={() => router.push(`/album/${item.slug}`)}
             />
           ))}

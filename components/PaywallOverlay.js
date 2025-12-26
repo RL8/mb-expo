@@ -45,6 +45,7 @@ export default function PaywallOverlay({
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      accessibilityViewIsModal={true}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.container} onPress={e => e.stopPropagation()}>
