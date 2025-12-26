@@ -5,12 +5,11 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withDelay,
   withSequence,
   FadeIn,
-  FadeOut,
   SlideInDown,
   ZoomIn,
-  ZoomOut,
   Layout,
   interpolate,
   Extrapolation,
@@ -202,17 +201,32 @@ function AnimatedTile({
   // Staggered entrance delay
   const entranceDelay = index * 60;
 
-  // Entrance animation: zoom in with spring
-  const enteringAnimation = ZoomIn
-    .delay(entranceDelay)
-    .duration(350)
-    .springify()
-    .damping(12)
-    .stiffness(110);
+  // Custom entering animation: scale only (no opacity to avoid conflict with layout)
+  const enteringAnimation = () => {
+    'worklet';
+    const animations = {
+      transform: [
+        { scale: withDelay(entranceDelay, withSpring(1, { damping: 12, stiffness: 110 })) }
+      ],
+    };
+    const initialValues = {
+      transform: [{ scale: 0 }],
+    };
+    return { initialValues, animations };
+  };
 
-  // Exit animation: zoom out + fade
+  // Custom exiting animation: scale only
   const exitingAnimation = enableExitAnimation
-    ? ZoomOut.duration(200).springify().damping(14)
+    ? () => {
+        'worklet';
+        const animations = {
+          transform: [{ scale: withTiming(0, { duration: 200 }) }],
+        };
+        const initialValues = {
+          transform: [{ scale: 1 }],
+        };
+        return { initialValues, animations };
+      }
     : undefined;
 
   return (
