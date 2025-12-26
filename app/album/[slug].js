@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View, Pressable, ActivityIndicator, useWindowDimensions, SafeAreaView, Platform, ScrollView, Modal } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -43,17 +43,26 @@ const METRIC_GROUPS = [
 
 const ALL_METRICS = METRIC_GROUPS.flatMap(g => g.metrics);
 
-function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleSubMode }) {
+// Metrics that don't apply to individual songs
+const SONG_DISABLED_METRICS = ['songCount'];
+
+function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleSubMode, disabledKeys = [] }) {
   const [open, setOpen] = useState(false);
   const selectedOption = ALL_METRICS.find(o => o.key === selected);
 
+  const closeModal = () => {
+    document.activeElement?.blur?.();
+    setOpen(false);
+  };
+
   const handleItemPress = (option) => {
+    if (disabledKeys.includes(option.key)) return;
     if (option.key === selected && option.subModes && onCycleSubMode) {
       onCycleSubMode();
     } else {
       onSelect(option.key);
     }
-    setOpen(false);
+    closeModal();
   };
 
   return (
@@ -66,25 +75,28 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
         </View>
         <Text style={styles.dropdownArrow}>{open ? '▲' : '▼'}</Text>
       </Pressable>
-      <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)} accessibilityViewIsModal={true}>
-        <Pressable style={styles.modalOverlay} onPress={() => setOpen(false)}>
+      <Modal transparent animationType="fade" visible={open} onRequestClose={closeModal} accessibilityViewIsModal={true}>
+        <Pressable style={styles.modalOverlay} onPress={closeModal}>
           <View style={styles.modalContent}>
             <ScrollView style={styles.modalScroll}>
               {groups.map(group => (
                 <View key={group.label} style={styles.modalGroup}>
                   <Text style={styles.modalGroupTitle}>{group.label}</Text>
-                  {group.metrics.map(option => (
-                    <Pressable
-                      key={option.key}
-                      style={[styles.modalItem, selected === option.key && styles.modalItemActive]}
-                      onPress={() => handleItemPress(option)}
-                    >
-                      <Text style={[styles.modalItemText, selected === option.key && styles.modalItemTextActive]}>
-                        {option.label}
-                      </Text>
-                      {selected === option.key && <Text style={styles.modalCheck}>✓</Text>}
-                    </Pressable>
-                  ))}
+                  {group.metrics.map(option => {
+                    const isDisabled = disabledKeys.includes(option.key);
+                    return (
+                      <Pressable
+                        key={option.key}
+                        style={[styles.modalItem, selected === option.key && styles.modalItemActive, isDisabled && styles.modalItemDisabled]}
+                        onPress={() => handleItemPress(option)}
+                      >
+                        <Text style={[styles.modalItemText, selected === option.key && styles.modalItemTextActive, isDisabled && styles.modalItemTextDisabled]}>
+                          {option.label}
+                        </Text>
+                        {selected === option.key && <Text style={styles.modalCheck}>✓</Text>}
+                      </Pressable>
+                    );
+                  })}
                 </View>
               ))}
             </ScrollView>
@@ -131,11 +143,18 @@ function Dropdown({ label, options, selected, onSelect, disabledKeys = [] }) {
 export default function AlbumScreen() {
   const router = useRouter();
   const { slug } = useLocalSearchParams();
-  const { getAlbumBySlug, getSongsForAlbum, getSortedAlbums, isLoading } = useDataStore();
-
-  const [selectedMetric, setSelectedMetric] = useState('default');
-  const [subModeIndex, setSubModeIndex] = useState(0);
-  const [sortBy, setSortBy] = useState('date');
+  const {
+    getAlbumBySlug,
+    getSongsForAlbum,
+    getSortedAlbums,
+    isLoading,
+    selectedMetric,
+    subModeIndex,
+    sortBy,
+    changeMetric,
+    cycleSubMode,
+    setSortBy,
+  } = useDataStore();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isSmall = windowWidth < 380;
   const isMobile = windowWidth < 500;
@@ -178,6 +197,18 @@ export default function AlbumScreen() {
       return item[actualDataKey] || 0;
     };
 
+    // Helper to get content list for display in tiles
+    const getContentList = (item, dataKey) => {
+      switch (dataKey) {
+        case 'coWriterCount':
+          return item.coWritersList || [];
+        case 'themeCount':
+          return item.themesList || [];
+        default:
+          return [];
+      }
+    };
+
     let sortedSongs = [...songs];
     if (sortBy === 'date') {
       sortedSongs.sort((a, b) => (a.trackNumber || 0) - (b.trackNumber || 0));
@@ -193,6 +224,7 @@ export default function AlbumScreen() {
       metricValue: getMetricValue(song),
       trackNumber: song.trackNumber,
       isVault: song.vaultTracks > 0,
+      contentList: getContentList(song, actualDataKey),
     }));
 
     const container = { x0: 0, y0: 0, x1: treemapWidth, y1: treemapHeight };
@@ -251,18 +283,15 @@ export default function AlbumScreen() {
             label="View"
             groups={METRIC_GROUPS}
             selected={selectedMetric}
-            onSelect={(key) => {
-              setSelectedMetric(key);
-              setSubModeIndex(0);
-              setSortBy(key === 'default' ? 'date' : 'value');
-            }}
+            onSelect={changeMetric}
             subLabel={currentSubLabel}
             onCycleSubMode={() => {
               const subModes = currentMetric?.subModes;
               if (subModes) {
-                setSubModeIndex((subModeIndex + 1) % subModes.length);
+                cycleSubMode(subModes.length);
               }
             }}
+            disabledKeys={SONG_DISABLED_METRICS}
           />
           <Dropdown
             label="Sort"
@@ -285,6 +314,7 @@ export default function AlbumScreen() {
               showOrder={sortBy === 'value' && selectedMetric !== 'default'}
               isTrackFive={item.trackNumber === 5}
               isVault={item.isVault}
+              isContentMetric={['coWriterCount', 'themeCount'].includes(actualDataKey)}
               onPress={() => router.push(`/song/${item.id}?album=${slug}`)}
             />
           ))}
@@ -334,8 +364,10 @@ const styles = StyleSheet.create({
   modalGroupTitle: { fontSize: 10, color: colors.text.muted, fontFamily: 'JetBrainsMono_700Bold', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 },
   modalItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8 },
   modalItemActive: { backgroundColor: colors.accent.primaryMuted },
+  modalItemDisabled: { opacity: 0.4 },
   modalItemText: { color: colors.text.secondary, fontSize: 13, fontFamily: 'Outfit_400Regular' },
   modalItemTextActive: { color: colors.accent.primary, fontFamily: 'Outfit_600SemiBold' },
+  modalItemTextDisabled: { color: colors.text.disabled },
   modalCheck: { color: colors.accent.primary, fontSize: 16 },
   treemapContainer: { position: 'relative', borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: colors.border.subtle },
   footer: { paddingVertical: 10, alignItems: 'center' },

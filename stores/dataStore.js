@@ -7,6 +7,26 @@ export const useDataStore = create((set, get) => ({
   isLoading: true,
   error: null,
 
+  // View state (persists across navigation)
+  selectedMetric: 'default',
+  subModeIndex: 0,
+  sortBy: 'date',
+
+  setSelectedMetric: (metric) => set({ selectedMetric: metric }),
+  setSubModeIndex: (index) => set({ subModeIndex: index }),
+  setSortBy: (sort) => set({ sortBy: sort }),
+
+  // Combined setter for metric change (resets subMode and updates sort)
+  changeMetric: (metric) => set({
+    selectedMetric: metric,
+    subModeIndex: 0,
+    sortBy: metric === 'default' ? 'date' : 'value',
+  }),
+
+  cycleSubMode: (subModesLength) => set((state) => ({
+    subModeIndex: (state.subModeIndex + 1) % subModesLength,
+  })),
+
   // Load data from Supabase
   loadData: async () => {
     if (get().albums.length > 0) return; // Already loaded

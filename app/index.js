@@ -72,13 +72,18 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
   const [open, setOpen] = useState(false);
   const selectedOption = ALL_METRICS.find(o => o.key === selected);
 
+  const closeModal = () => {
+    document.activeElement?.blur?.();
+    setOpen(false);
+  };
+
   const handleItemPress = (option) => {
     if (option.key === selected && option.subModes && onCycleSubMode) {
       onCycleSubMode();
     } else {
       onSelect(option.key);
     }
-    setOpen(false);
+    closeModal();
   };
 
   return (
@@ -91,12 +96,12 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
         </View>
         <Text style={styles.dropdownArrow}>{open ? '▲' : '▼'}</Text>
       </Pressable>
-      <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)} accessibilityViewIsModal={true}>
-        <Pressable style={styles.modalOverlay} onPress={() => setOpen(false)}>
+      <Modal transparent animationType="fade" visible={open} onRequestClose={closeModal} accessibilityViewIsModal={true}>
+        <Pressable style={styles.modalOverlay} onPress={closeModal}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select {label}</Text>
-              <Pressable style={styles.modalClose} onPress={() => setOpen(false)}>
+              <Pressable style={styles.modalClose} onPress={closeModal}>
                 <Text style={styles.modalCloseText}>×</Text>
               </Pressable>
             </View>
@@ -192,17 +197,22 @@ function InfoButton({ metricKey }) {
   const [visible, setVisible] = useState(false);
   const info = METRIC_INFO[metricKey] || METRIC_INFO.default;
 
+  const closeModal = () => {
+    document.activeElement?.blur?.();
+    setVisible(false);
+  };
+
   return (
     <>
       <Pressable style={styles.infoButton} onPress={() => setVisible(true)}>
         <Text style={styles.infoButtonText}>ⓘ</Text>
       </Pressable>
-      <Modal transparent animationType="fade" visible={visible} onRequestClose={() => setVisible(false)} accessibilityViewIsModal={true}>
-        <Pressable style={styles.modalOverlay} onPress={() => setVisible(false)}>
+      <Modal transparent animationType="fade" visible={visible} onRequestClose={closeModal} accessibilityViewIsModal={true}>
+        <Pressable style={styles.modalOverlay} onPress={closeModal}>
           <View style={styles.infoModalContent}>
             <Text style={styles.infoModalTitle}>{info.title}</Text>
             <Text style={styles.infoModalDescription}>{info.description}</Text>
-            <Pressable style={styles.infoModalClose} onPress={() => setVisible(false)}>
+            <Pressable style={styles.infoModalClose} onPress={closeModal}>
               <Text style={styles.infoModalCloseText}>Got it</Text>
             </Pressable>
           </View>
@@ -214,10 +224,18 @@ function InfoButton({ metricKey }) {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { albums, songs, isLoading, loadData } = useDataStore();
-  const [selectedMetric, setSelectedMetric] = useState('default');
-  const [subModeIndex, setSubModeIndex] = useState(0);
-  const [sortBy, setSortBy] = useState('date');
+  const {
+    albums,
+    songs,
+    isLoading,
+    loadData,
+    selectedMetric,
+    subModeIndex,
+    sortBy,
+    changeMetric,
+    cycleSubMode,
+    setSortBy,
+  } = useDataStore();
   const [hasProfile, setHasProfile] = useState(false);
   const [selectedArtist, setSelectedArtist] = useState('taylor-swift');
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -334,16 +352,12 @@ export default function HomeScreen() {
             label="View"
             groups={METRIC_GROUPS}
             selected={selectedMetric}
-            onSelect={(key) => {
-              setSelectedMetric(key);
-              setSubModeIndex(0);
-              setSortBy(key === 'default' ? 'date' : 'value');
-            }}
+            onSelect={changeMetric}
             subLabel={currentSubLabel}
             onCycleSubMode={() => {
               const subModes = currentMetric?.subModes;
               if (subModes) {
-                setSubModeIndex((subModeIndex + 1) % subModes.length);
+                cycleSubMode(subModes.length);
               }
             }}
           />

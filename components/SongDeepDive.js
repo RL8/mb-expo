@@ -45,6 +45,11 @@ function Tag({ text, color }) {
  * SongDeepDive - Comprehensive song information overlay
  */
 export default function SongDeepDive({ visible, song, album, songs, onClose }) {
+  const handleClose = () => {
+    document.activeElement?.blur?.();
+    onClose();
+  };
+
   if (!song || !visible) return null;
 
   const textColor = getContrastColor(album?.color || '#333');
@@ -84,7 +89,7 @@ export default function SongDeepDive({ visible, song, album, songs, onClose }) {
   }[song.emotionalIntensity] || 'Moderate';
 
   return (
-    <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose} accessibilityViewIsModal={true}>
+    <Modal transparent animationType="slide" visible={visible} onRequestClose={handleClose} accessibilityViewIsModal={true}>
       <View style={styles.overlay}>
         <View style={styles.container}>
           {/* Header */}
@@ -100,7 +105,7 @@ export default function SongDeepDive({ visible, song, album, songs, onClose }) {
                   Track {song.trackNumber}
                 </Text>
               </View>
-              <Pressable style={styles.closeButton} onPress={onClose}>
+              <Pressable style={styles.closeButton} onPress={handleClose}>
                 <Text style={[styles.closeButtonText, { color: textColor }]}>×</Text>
               </Pressable>
             </View>

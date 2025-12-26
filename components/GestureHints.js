@@ -176,15 +176,20 @@ export function GestureHintTooltip({
 }) {
   if (!visible || !hint) return null;
 
+  const handleDismiss = () => {
+    document.activeElement?.blur?.();
+    onDismiss();
+  };
+
   return (
     <Modal
       transparent
       animationType="fade"
       visible={visible}
-      onRequestClose={onDismiss}
+      onRequestClose={handleDismiss}
       accessibilityViewIsModal={true}
     >
-      <Pressable style={styles.tooltipOverlay} onPress={onDismiss}>
+      <Pressable style={styles.tooltipOverlay} onPress={handleDismiss}>
         <Animated.View
           style={[styles.tooltipContainer]}
           entering={FadeIn.duration(300)}
@@ -194,7 +199,7 @@ export function GestureHintTooltip({
             <AnimatedHand animation={hint.animation} />
             <Text style={styles.tooltipTitle}>{hint.title}</Text>
             <Text style={styles.tooltipDescription}>{hint.description}</Text>
-            <Pressable style={styles.tooltipButton} onPress={onDismiss}>
+            <Pressable style={styles.tooltipButton} onPress={handleDismiss}>
               <Text style={styles.tooltipButtonText}>Got it</Text>
             </Pressable>
           </View>
@@ -211,17 +216,22 @@ export function GestureOnboarding({ visible, onComplete }) {
 
   const availableHints = GESTURE_HINTS;
 
+  const handleComplete = () => {
+    document.activeElement?.blur?.();
+    onComplete();
+  };
+
   const handleNext = () => {
     if (currentIndex < availableHints.length - 1) {
       setCurrentIndex(currentIndex + 1);
       progress.value = withSpring((currentIndex + 1) / (availableHints.length - 1));
     } else {
-      onComplete();
+      handleComplete();
     }
   };
 
   const handleSkip = () => {
-    onComplete();
+    handleComplete();
   };
 
   const currentHint = availableHints[currentIndex];

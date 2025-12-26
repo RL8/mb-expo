@@ -7,15 +7,20 @@ import { colors } from '../lib/theme';
 const CHECKOUT_URL = 'https://buy.stripe.com/test_fZe5o52dDbkQ2fS4gj'; // Replace with your actual link
 
 export default function UpgradeModal({ visible, onClose }) {
+  const handleClose = () => {
+    document.activeElement?.blur?.();
+    onClose();
+  };
+
   const handleUpgrade = () => {
     window.open(CHECKOUT_URL, '_blank');
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} accessibilityViewIsModal={true}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose} accessibilityViewIsModal={true}>
       <Pressable
         style={styles.overlay}
-        onPress={onClose}
+        onPress={handleClose}
         accessibilityLabel="Upgrade to premium dialog"
       >
         <Pressable
@@ -26,7 +31,7 @@ export default function UpgradeModal({ visible, onClose }) {
           {/* Close button */}
           <Pressable
             style={styles.closeBtn}
-            onPress={onClose}
+            onPress={handleClose}
             accessibilityLabel="Close"
             accessibilityRole="button"
           >

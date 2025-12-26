@@ -137,13 +137,18 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
   const [open, setOpen] = useState(false);
   const selectedOption = ALL_METRICS.find(o => o.key === selected);
 
+  const closeModal = () => {
+    document.activeElement?.blur?.();
+    setOpen(false);
+  };
+
   const handleItemPress = (option) => {
     if (option.key === selected && option.subModes && onCycleSubMode) {
       onCycleSubMode();
     } else {
       onSelect(option.key);
     }
-    setOpen(false);
+    closeModal();
   };
 
   return (
@@ -156,12 +161,12 @@ function GroupedDropdown({ label, groups, selected, onSelect, subLabel, onCycleS
         </View>
         <Text style={styles.dropdownArrow}>{open ? '▲' : '▼'}</Text>
       </Pressable>
-      <Modal transparent animationType="fade" visible={open} onRequestClose={() => setOpen(false)} accessibilityViewIsModal={true}>
-        <Pressable style={styles.viewModalOverlay} onPress={() => setOpen(false)}>
+      <Modal transparent animationType="fade" visible={open} onRequestClose={closeModal} accessibilityViewIsModal={true}>
+        <Pressable style={styles.viewModalOverlay} onPress={closeModal}>
           <View style={styles.viewModalContent}>
             <View style={styles.viewModalHeader}>
               <Text style={styles.viewModalTitle}>Select {label}</Text>
-              <Pressable style={styles.viewModalClose} onPress={() => setOpen(false)}>
+              <Pressable style={styles.viewModalClose} onPress={closeModal}>
                 <Text style={styles.viewModalCloseText}>×</Text>
               </Pressable>
             </View>
@@ -289,17 +294,22 @@ function InfoButton({ metricKey }) {
   const [visible, setVisible] = useState(false);
   const info = METRIC_INFO[metricKey] || METRIC_INFO.default;
 
+  const closeModal = () => {
+    document.activeElement?.blur?.();
+    setVisible(false);
+  };
+
   return (
     <>
       <Pressable style={styles.infoButton} onPress={() => setVisible(true)}>
         <Text style={styles.infoButtonText}>ⓘ</Text>
       </Pressable>
-      <Modal transparent animationType="fade" visible={visible} onRequestClose={() => setVisible(false)} accessibilityViewIsModal={true}>
-        <Pressable style={styles.infoModalOverlay} onPress={() => setVisible(false)}>
+      <Modal transparent animationType="fade" visible={visible} onRequestClose={closeModal} accessibilityViewIsModal={true}>
+        <Pressable style={styles.infoModalOverlay} onPress={closeModal}>
           <View style={styles.infoModalContent}>
             <Text style={styles.infoModalTitle}>{info.title}</Text>
             <Text style={styles.infoModalDescription}>{info.description}</Text>
-            <Pressable style={styles.infoModalClose} onPress={() => setVisible(false)}>
+            <Pressable style={styles.infoModalClose} onPress={closeModal}>
               <Text style={styles.infoModalCloseText}>Got it</Text>
             </Pressable>
           </View>
@@ -312,6 +322,11 @@ function InfoButton({ metricKey }) {
 
 function SongDetailModal({ song, songs, albums, metric, dataKey, onClose, onNavigateToPremium }) {
   const [showDeepDive, setShowDeepDive] = useState(false);
+
+  const handleClose = () => {
+    document.activeElement?.blur?.();
+    onClose();
+  };
 
   if (!song) return null;
 
@@ -345,8 +360,8 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose, onNavi
   const suffix = metric?.suffix || '';
 
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose} accessibilityViewIsModal={true}>
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
+    <Modal transparent animationType="fade" onRequestClose={handleClose} accessibilityViewIsModal={true}>
+      <Pressable style={styles.modalOverlay} onPress={handleClose}>
         <Pressable style={styles.modalContent} onPress={e => e.stopPropagation()}>
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* Header */}
@@ -356,7 +371,7 @@ function SongDetailModal({ song, songs, albums, metric, dataKey, onClose, onNavi
                 <Text style={styles.modalTitle} numberOfLines={2}>{song.name}</Text>
                 <Text style={styles.modalSubtitle}>{album?.display_name || 'Unknown Album'}</Text>
               </View>
-              <Pressable style={styles.modalClose} onPress={onClose}>
+              <Pressable style={styles.modalClose} onPress={handleClose}>
                 <Text style={styles.modalCloseText}>×</Text>
               </Pressable>
             </View>

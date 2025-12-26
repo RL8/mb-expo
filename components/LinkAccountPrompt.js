@@ -32,6 +32,7 @@ export default function LinkAccountPrompt({ visible, onDismiss, prefillEmail = '
       setSuccess(true);
       // Auto-dismiss after success
       setTimeout(() => {
+        document.activeElement?.blur?.();
         onDismiss?.();
       }, 2000);
     } catch (err) {
@@ -42,6 +43,7 @@ export default function LinkAccountPrompt({ visible, onDismiss, prefillEmail = '
   };
 
   const handleSkip = () => {
+    document.activeElement?.blur?.();
     onDismiss?.();
   };
 

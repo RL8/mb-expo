@@ -33,6 +33,11 @@ export default function PaywallOverlay({
 
   const messaging = getContextualMessaging(context, itemName);
 
+  const handleClose = () => {
+    document.activeElement?.blur?.();
+    onClose();
+  };
+
   const handleUpgrade = () => {
     // On web, could open Stripe checkout directly
     // For now, just call the callback
@@ -44,13 +49,13 @@ export default function PaywallOverlay({
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
       accessibilityViewIsModal={true}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={styles.backdrop} onPress={handleClose}>
         <Pressable style={styles.container} onPress={e => e.stopPropagation()}>
           {/* Close button */}
-          <Pressable style={styles.closeButton} onPress={onClose}>
+          <Pressable style={styles.closeButton} onPress={handleClose}>
             <Text style={styles.closeButtonText}>×</Text>
           </Pressable>
 
