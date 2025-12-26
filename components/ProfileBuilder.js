@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, Pressable, SafeAreaView, ScrollView } from 'rea
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AlbumSelector from './AlbumSelector';
 import PerAlbumSongPicker from './PerAlbumSongPicker';
+import WeightingScreen from './WeightingScreen';
 import OnboardingLyricPicker from './OnboardingLyricPicker';
 import ProfileCard from './ProfileCard';
 import ComparisonResult from './ComparisonResult';
@@ -38,6 +39,9 @@ const createEmptyProfile = () => ({
   topAlbums: [],
   albumSongs: {},
   songLyrics: {},
+  albumWeights: {},
+  songWeights: {},
+  weightPreset: null,
   editsUsed: {
     albums: 0,
     songs: 0,
@@ -72,6 +76,11 @@ const getIncompleteStep = (profile) => {
     }
   }
 
+  // Check if weighting is done
+  if (!profile.weightPreset || Object.keys(profile.albumWeights || {}).length === 0) {
+    return { step: 'weighting', index: 0 };
+  }
+
   // All songs selected, check lyrics (optional but part of flow)
   for (let i = 0; i < profile.topAlbums.length; i++) {
     const albumId = profile.topAlbums[i];
@@ -85,7 +94,7 @@ const getIncompleteStep = (profile) => {
 };
 
 export default function ProfileBuilder({ albums, songs, onClose, onPreview, onViewLeaderboard, onShare }) {
-  const [step, setStep] = useState('albums'); // 'albums' | 'songs' | 'lyrics' | 'preview' | 'comparison'
+  const [step, setStep] = useState('albums'); // 'albums' | 'songs' | 'weighting' | 'lyrics' | 'preview' | 'comparison'
   const [currentIndex, setCurrentIndex] = useState(0); // For songs (0-2) and lyrics (0-2)
   const [profile, setProfile] = useState(createEmptyProfile());
   const [isEditing, setIsEditing] = useState(false);
@@ -260,9 +269,9 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview, onVi
     if (currentIndex < 2) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      // All songs selected - move to lyrics
+      // All songs selected - move to weighting
       setCurrentIndex(0);
-      setStep('lyrics');
+      setStep('weighting');
       if (isEditing) {
         setProfile(prev => ({
           ...prev,
@@ -281,6 +290,32 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview, onVi
     } else {
       setStep('albums');
     }
+  };
+
+  // Weighting handlers
+  const handleWeightingComplete = (weights, preset) => {
+    // Combine album and song weights
+    const allSongIds = Object.values(profile.albumSongs).flat();
+
+    setProfile(prev => ({
+      ...prev,
+      albumWeights: weights,
+      // For now, distribute song weights evenly within each album's allocation
+      songWeights: allSongIds.reduce((acc, songId, idx) => {
+        // Simple equal distribution for songs (can be enhanced later)
+        acc[songId] = Math.round(100 / allSongIds.length);
+        return acc;
+      }, {}),
+      weightPreset: preset,
+    }));
+
+    setCurrentIndex(0);
+    setStep('lyrics');
+  };
+
+  const handleWeightingBack = () => {
+    setStep('songs');
+    setCurrentIndex(2); // Go to last album's songs
   };
 
   // Lyric selection handlers
@@ -325,8 +360,7 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview, onVi
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
     } else {
-      setStep('songs');
-      setCurrentIndex(2); // Go to last album's songs
+      setStep('weighting');
     }
   };
 
@@ -353,6 +387,8 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview, onVi
       setCurrentIndex(2);
     } else if (step === 'lyrics') {
       handleLyricBack();
+    } else if (step === 'weighting') {
+      handleWeightingBack();
     } else if (step === 'songs') {
       handleSongAlbumBack();
     } else {
@@ -360,13 +396,14 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview, onVi
     }
   };
 
-  // Calculate progress (8 steps total: 1 album + 3 songs + 3 lyrics + 1 preview)
-  const getTotalSteps = () => 8;
+  // Calculate progress (9 steps total: 1 album + 3 songs + 1 weighting + 3 lyrics + 1 preview)
+  const getTotalSteps = () => 9;
   const getCurrentStepIndex = () => {
     if (step === 'albums') return 0;
     if (step === 'songs') return 1 + currentIndex;
-    if (step === 'lyrics') return 4 + currentIndex;
-    return 7; // preview
+    if (step === 'weighting') return 4;
+    if (step === 'lyrics') return 5 + currentIndex;
+    return 8; // preview
   };
 
   // Resume prompt overlay
@@ -424,7 +461,7 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview, onVi
           </View>
 
           {/* Skip button */}
-          {step !== 'preview' && step !== 'comparison' && (
+          {step !== 'preview' && step !== 'comparison' && step !== 'weighting' && (
             <Pressable style={styles.skipBtn} onPress={handleSkip}>
               <Text style={styles.skipBtnText}>Save & Exit</Text>
             </Pressable>
@@ -481,6 +518,20 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview, onVi
               totalAlbums={3}
               isEditing={isEditing && profile.editsUsed?.songs === 0}
               editsRemaining={songEditsRemaining}
+            />
+          )}
+
+          {step === 'weighting' && (
+            <WeightingScreen
+              type="albums"
+              items={selectedAlbums.map(album => ({
+                id: album.id,
+                name: album.name,
+                color: album.color,
+              }))}
+              onComplete={handleWeightingComplete}
+              onBack={handleWeightingBack}
+              onSkip={handleWeightingComplete}
             />
           )}
 
