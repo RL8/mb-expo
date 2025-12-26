@@ -7,7 +7,7 @@ import { useDataStore, albumToSlug } from '../stores/dataStore';
 import { colors } from '../lib/theme';
 import AnimatedTile from '../components/AnimatedTile';
 import LegacyAnimatedTile from '../components/LegacyAnimatedTile';
-import { GestureCoachOnboarding, useGestureCoach } from '../components/LottieGestureCoach';
+import { GestureOnboarding } from '../components/GestureHints';
 
 const DEMO_METRICS = [
   { key: 'default', label: 'Default' },
@@ -189,8 +189,8 @@ export default function CompareScreen() {
         </View>
       </View>
 
-      {/* Lottie Gesture Coach */}
-      <GestureCoachOnboarding
+      {/* Gesture Coach */}
+      <GestureOnboarding
         visible={showGestureCoach}
         onComplete={() => setShowGestureCoach(false)}
       />
