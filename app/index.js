@@ -368,7 +368,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.primary },
-  content: { flex: 1, paddingTop: Platform.OS === 'web' ? 20 : 12 },
+  content: { flex: 1, paddingTop: 20 },
   loadingContainer: { flex: 1, backgroundColor: colors.bg.primary, alignItems: 'center', justifyContent: 'center' },
   loadingText: { marginTop: 16, color: colors.text.muted, fontSize: 14, fontFamily: 'Outfit_400Regular', letterSpacing: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },

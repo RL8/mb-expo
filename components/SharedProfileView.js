@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    paddingTop: Platform.OS === 'web' ? 20 : 12,
+    paddingTop: 20,
   },
   headerTitle: {
     fontSize: 18,

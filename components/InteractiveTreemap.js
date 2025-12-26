@@ -1,16 +1,13 @@
-import { useEffect, useCallback, useState } from 'react';
-import { StyleSheet, Platform } from 'react-native';
+import { useCallback } from 'react';
+import { StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
-  runOnJS,
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { DeviceMotion } from 'expo-sensors';
 import { colors } from '../lib/theme';
 import AnimatedTile from './AnimatedTile';
 
@@ -31,7 +28,6 @@ export default function InteractiveTreemap({
   onTilePress,
   onTileLongPress,
   enablePinchZoom = true,
-  enableParallax = true,
   style,
 }) {
   // Pinch-to-zoom state
@@ -43,59 +39,6 @@ export default function InteractiveTreemap({
   const savedTranslateY = useSharedValue(0);
   const focalX = useSharedValue(0);
   const focalY = useSharedValue(0);
-
-  // Sensor parallax state
-  const tiltX = useSharedValue(0);
-  const tiltY = useSharedValue(0);
-  const [parallaxEnabled, setParallaxEnabled] = useState(enableParallax);
-
-  // Setup device motion for parallax
-  useEffect(() => {
-    if (!enableParallax || Platform.OS === 'web') {
-      setParallaxEnabled(false);
-      return;
-    }
-
-    let subscription;
-
-    const startMotion = async () => {
-      try {
-        const available = await DeviceMotion.isAvailableAsync();
-        if (!available) {
-          setParallaxEnabled(false);
-          return;
-        }
-
-        DeviceMotion.setUpdateInterval(50); // 20fps for subtle effect
-
-        subscription = DeviceMotion.addListener(({ rotation }) => {
-          if (rotation) {
-            // Beta = front-back tilt, Gamma = left-right tilt
-            const { beta, gamma } = rotation;
-            // Clamp and scale for subtle effect
-            tiltX.value = withSpring(
-              Math.max(-8, Math.min(8, gamma * 15)),
-              { damping: 20, stiffness: 100 }
-            );
-            tiltY.value = withSpring(
-              Math.max(-8, Math.min(8, beta * 15)),
-              { damping: 20, stiffness: 100 }
-            );
-          }
-        });
-      } catch (e) {
-        setParallaxEnabled(false);
-      }
-    };
-
-    startMotion();
-
-    return () => {
-      if (subscription) {
-        subscription.remove();
-      }
-    };
-  }, [enableParallax]);
 
   // Double tap to reset zoom
   const resetZoom = useCallback(() => {
@@ -185,12 +128,12 @@ export default function InteractiveTreemap({
       )
     : Gesture.Race(doubleTapGesture);
 
-  // Animated container style (zoom + pan + parallax)
+  // Animated container style (zoom + pan)
   const animatedContainerStyle = useAnimatedStyle(() => {
     return {
       transform: [
-        { translateX: translateX.value + tiltX.value },
-        { translateY: translateY.value + tiltY.value },
+        { translateX: translateX.value },
+        { translateY: translateY.value },
         { scale: scale.value },
       ],
     };

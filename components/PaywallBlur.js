@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Platform, Linking, ActivityIndicator, Modal } from 'react-native';
+import React from 'react';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../stores/authStore';
 import { useSubscriptionStore } from '../stores/subscriptionStore';
 import { colors } from '../lib/theme';
@@ -12,25 +12,18 @@ export function PaywallBlur({ children, feature = 'premium' }) {
   const checkoutLoading = useSubscriptionStore((state) => state.checkoutLoading);
   const userId = useAuthStore((state) => state.user?.id);
   const openCheckout = useSubscriptionStore((state) => state.openCheckout);
-  const [showUpgrade, setShowUpgrade] = useState(false);
-  const [error, setError] = useState(null);
 
   if (isPremium) {
     return children;
   }
 
   const handleUpgrade = async () => {
-    setError(null);
-    if (Platform.OS === 'web') {
-      try {
-        await openCheckout(userId);
-      } catch (err) {
-        console.error('Checkout error:', err);
-        // Fallback to direct link if API not set up
-        window.open(CHECKOUT_URL, '_blank');
-      }
-    } else {
-      setShowUpgrade(true);
+    try {
+      await openCheckout(userId);
+    } catch (err) {
+      console.error('Checkout error:', err);
+      // Fallback to direct link if API not set up
+      window.open(CHECKOUT_URL, '_blank');
     }
   };
 
@@ -51,50 +44,16 @@ export function PaywallBlur({ children, feature = 'premium' }) {
         <Text style={styles.lockIcon}>🔒</Text>
         <Text style={styles.upgradeTitle}>Premium Feature</Text>
         <Text style={styles.upgradeText}>
-          {Platform.OS === 'web'
-            ? 'Unlock similar & different songs with Premium'
-            : 'Visit web version to unlock'}
+          Unlock similar & different songs with Premium
         </Text>
         <View style={[styles.upgradeButton, checkoutLoading && styles.upgradeButtonLoading]}>
           {checkoutLoading ? (
             <ActivityIndicator color={colors.text.inverse} size="small" />
           ) : (
-            <Text style={styles.upgradeButtonText}>
-              {Platform.OS === 'web' ? 'Upgrade · $13.13/year' : 'Learn More'}
-            </Text>
+            <Text style={styles.upgradeButtonText}>Upgrade · $13.13/year</Text>
           )}
         </View>
       </Pressable>
-
-      {/* Mobile upgrade modal */}
-      <Modal
-        visible={showUpgrade && Platform.OS !== 'web'}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowUpgrade(false)}
-      >
-        <View
-          style={styles.mobileModalOverlay}
-          accessibilityViewIsModal={true}
-          accessibilityLabel="Upgrade information"
-        >
-          <View style={styles.mobileModal}>
-            <Text style={styles.mobileModalTitle}>Upgrade on Web</Text>
-            <Text style={styles.mobileModalText}>
-              To unlock premium features, please visit our web version at:
-            </Text>
-            <Text style={styles.mobileModalUrl}>taylorswift.app/premium</Text>
-            <Pressable
-              style={styles.mobileModalClose}
-              onPress={() => setShowUpgrade(false)}
-              accessibilityLabel="Close"
-              accessibilityRole="button"
-            >
-              <Text style={styles.mobileModalCloseText}>Got it</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -122,12 +81,10 @@ export function BlurredSection({ children, title, onNavigateToPremium }) {
       return;
     }
     // Otherwise fall back to redirect checkout
-    if (Platform.OS === 'web') {
-      try {
-        await openCheckout(userId);
-      } catch (error) {
-        window.open(CHECKOUT_URL, '_blank');
-      }
+    try {
+      await openCheckout(userId);
+    } catch (error) {
+      window.open(CHECKOUT_URL, '_blank');
     }
   };
 
@@ -165,11 +122,8 @@ const styles = StyleSheet.create({
   blurOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.bg.overlay,
-    // On web, use backdrop-filter for real blur
-    ...(Platform.OS === 'web' && {
-      backdropFilter: 'blur(8px)',
-      WebkitBackdropFilter: 'blur(8px)',
-    }),
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
   },
   upgradePrompt: {
     position: 'absolute',
@@ -260,60 +214,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.surface.heavy,
     borderRadius: 8,
-    ...(Platform.OS === 'web' && {
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)',
-    }),
-  },
-
-  // Mobile modal
-  mobileModalOverlay: {
-    flex: 1,
-    backgroundColor: colors.bg.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  mobileModal: {
-    backgroundColor: colors.bg.elevated,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.medium,
-    maxWidth: 320,
-    width: '100%',
-  },
-  mobileModalTitle: {
-    fontSize: 16,
-    color: colors.text.primary,
-    fontFamily: 'Outfit_600SemiBold',
-    marginBottom: 8,
-  },
-  mobileModalText: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    fontFamily: 'Outfit_400Regular',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  mobileModalUrl: {
-    fontSize: 12,
-    color: colors.accent.primary,
-    fontFamily: 'JetBrainsMono_700Bold',
-    marginBottom: 16,
-  },
-  mobileModalClose: {
-    backgroundColor: colors.accent.primaryMuted,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.accent.primary,
-  },
-  mobileModalCloseText: {
-    fontSize: 12,
-    color: colors.accent.primary,
-    fontFamily: 'JetBrainsMono_700Bold',
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
   },
 });

@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { StyleSheet, Text, View, Pressable, ActivityIndicator, useWindowDimensions, SafeAreaView, Platform, Animated, ScrollView, Modal } from 'react-native';
+import { StyleSheet, Text, View, Pressable, ActivityIndicator, useWindowDimensions, SafeAreaView, Animated, ScrollView, Modal } from 'react-native';
 import { useFonts, Outfit_300Light, Outfit_400Regular, Outfit_600SemiBold, Outfit_800ExtraBold } from '@expo-google-fonts/outfit';
 import { JetBrainsMono_400Regular, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
 import * as SplashScreen from 'expo-splash-screen';
@@ -18,9 +18,8 @@ import { useSubscriptionStore } from './stores/subscriptionStore';
 import { colors, getContrastColor, getOverlayColor } from './lib/theme';
 import SongDeepDive from './components/SongDeepDive';
 
-// Parse URL parameters (web only)
+// Parse URL parameters
 function getUrlParams() {
-  if (Platform.OS !== 'web') return {};
   const params = new URLSearchParams(window.location.search);
   return {
     payment: params.get('payment'),
@@ -28,9 +27,8 @@ function getUrlParams() {
   };
 }
 
-// Parse share profile ID from URL path (web only)
+// Parse share profile ID from URL path
 function getShareIdFromPath() {
-  if (Platform.OS !== 'web') return null;
   const path = window.location.pathname;
   const match = path.match(/^\/p\/([a-zA-Z0-9]+)$/);
   return match ? match[1] : null;
@@ -38,14 +36,14 @@ function getShareIdFromPath() {
 
 // Clear path to home
 function navigateToHome() {
-  if (Platform.OS === 'web' && window.history.replaceState) {
+  if (window.history.replaceState) {
     window.history.replaceState({}, '', '/');
   }
 }
 
 // Clear URL parameters after reading
 function clearUrlParams() {
-  if (Platform.OS === 'web' && window.history.replaceState) {
+  if (window.history.replaceState) {
     window.history.replaceState({}, '', window.location.pathname);
   }
 }
@@ -1057,7 +1055,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: Platform.OS === 'web' ? 20 : 12,
+    paddingTop: 20,
   },
   loadingContainer: {
     flex: 1,

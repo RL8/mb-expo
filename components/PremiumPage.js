@@ -1,34 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
   ScrollView,
-  Platform,
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useAuthStore } from '../stores/authStore';
 import { useSubscriptionStore } from '../stores/subscriptionStore';
 import { colors } from '../lib/theme';
-
-// Web-specific imports (loaded dynamically)
-let loadStripe, Elements, PaymentElement, useStripeWeb, useElements;
-if (Platform.OS === 'web') {
-  const stripeJs = require('@stripe/stripe-js');
-  const stripeReact = require('@stripe/react-stripe-js');
-  loadStripe = stripeJs.loadStripe;
-  Elements = stripeReact.Elements;
-  PaymentElement = stripeReact.PaymentElement;
-  useStripeWeb = stripeReact.useStripe;
-  useElements = stripeReact.useElements;
-}
-
-// Mobile-specific imports - disabled for now (shows fallback UI)
-// Native Stripe causes bundler errors on web
-let StripeProvider = null;
-let useStripe = null;
 
 const FEATURES = [
   {
@@ -55,7 +39,7 @@ const FEATURES = [
 
 // Payment Form Component (inside Elements provider)
 function PaymentForm({ onSuccess, customerId, userId }) {
-  const stripe = useStripeWeb();
+  const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
@@ -263,129 +247,6 @@ function WebCheckout({ onSuccess, onClose }) {
   );
 }
 
-// Mobile Payment Component
-function MobilePayment({ onSuccess, onClose }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const userId = useAuthStore((state) => state.user?.id);
-
-  // If Stripe Native is not available, show web fallback message
-  if (!useStripe) {
-    return (
-      <View style={styles.mobilePaymentFallback}>
-        <Text style={styles.mobilePaymentFallbackTitle}>
-          Mobile Payments Coming Soon
-        </Text>
-        <Text style={styles.mobilePaymentFallbackText}>
-          For now, please use the web version to subscribe.
-        </Text>
-        <Pressable style={styles.webLinkButton} onPress={onClose}>
-          <Text style={styles.webLinkButtonText}>Got it</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
-
-  const handlePayment = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Create payment intent on server
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL || ''}/api/create-payment-intent`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to create payment');
-      }
-
-      const { clientSecret, customerId, ephemeralKey } = await response.json();
-
-      // Initialize PaymentSheet
-      const { error: initError } = await initPaymentSheet({
-        paymentIntentClientSecret: clientSecret,
-        customerEphemeralKeySecret: ephemeralKey,
-        customerId: customerId,
-        merchantDisplayName: 'Swiftie Ranker',
-        applePay: {
-          merchantCountryCode: 'US',
-        },
-        googlePay: {
-          merchantCountryCode: 'US',
-          testEnv: true, // Set to false in production
-        },
-        style: 'automatic',
-        appearance: {
-          colors: {
-            primary: colors.accent.primary,
-            background: colors.bg.card,
-            componentBackground: colors.surface.medium,
-            componentText: colors.text.primary,
-            secondaryText: colors.text.secondary,
-            placeholderText: colors.text.disabled,
-          },
-        },
-      });
-
-      if (initError) {
-        throw new Error(initError.message);
-      }
-
-      // Present PaymentSheet
-      const { error: paymentError } = await presentPaymentSheet();
-
-      if (paymentError) {
-        if (paymentError.code === 'Canceled') {
-          // User cancelled - not an error
-          return;
-        }
-        throw new Error(paymentError.message);
-      }
-
-      // Payment successful
-      onSuccess?.();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <View style={styles.mobilePaymentContainer}>
-      {error && (
-        <View style={styles.paymentError}>
-          <Text style={styles.paymentErrorText}>{error}</Text>
-        </View>
-      )}
-
-      <Pressable
-        style={[styles.payButton, loading && styles.payButtonDisabled]}
-        onPress={handlePayment}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color={colors.text.inverse} size="small" />
-        ) : (
-          <Text style={styles.payButtonText}>Subscribe Now</Text>
-        )}
-      </Pressable>
-
-      <Text style={styles.paymentNote}>
-        Secure payment powered by Stripe
-      </Text>
-    </View>
-  );
-}
-
 // Main Premium Page Component
 export default function PremiumPage({ onClose, onSuccess }) {
   const [showCheckout, setShowCheckout] = useState(false);
@@ -425,16 +286,6 @@ export default function PremiumPage({ onClose, onSuccess }) {
 
   // Show checkout form
   if (showCheckout) {
-    const PaymentComponent = Platform.OS === 'web' ? WebCheckout : MobilePayment;
-
-    // Wrap mobile payment with StripeProvider if available
-    const content = (
-      <PaymentComponent
-        onSuccess={handlePaymentSuccess}
-        onClose={() => setShowCheckout(false)}
-      />
-    );
-
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -446,16 +297,10 @@ export default function PremiumPage({ onClose, onSuccess }) {
         </View>
 
         <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-          {Platform.OS !== 'web' && StripeProvider ? (
-            <StripeProvider
-              publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}
-              merchantIdentifier="merchant.com.swiftieranker"
-            >
-              {content}
-            </StripeProvider>
-          ) : (
-            content
-          )}
+          <WebCheckout
+            onSuccess={handlePaymentSuccess}
+            onClose={() => setShowCheckout(false)}
+          />
         </ScrollView>
       </SafeAreaView>
     );
@@ -753,62 +598,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_600SemiBold',
   },
 
-  // Mobile payment
-  mobilePaymentContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  mobilePaymentFallback: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  mobilePaymentFallbackTitle: {
-    fontSize: 18,
-    color: colors.text.primary,
-    fontFamily: 'Outfit_600SemiBold',
-    marginBottom: 8,
-  },
-  mobilePaymentFallbackText: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    fontFamily: 'Outfit_400Regular',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  webLinkButton: {
-    backgroundColor: colors.accent.primaryMuted,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.accent.primary,
-  },
-  webLinkButtonText: {
-    fontSize: 14,
-    color: colors.accent.primary,
-    fontFamily: 'Outfit_600SemiBold',
-  },
-  payButton: {
-    backgroundColor: colors.accent.primary,
-    borderRadius: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 48,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  payButtonDisabled: {
-    opacity: 0.6,
-  },
-  payButtonText: {
-    fontSize: 16,
-    color: colors.text.inverse,
-    fontFamily: 'Outfit_600SemiBold',
-  },
-  paymentNote: {
-    fontSize: 12,
-    color: colors.text.muted,
-    fontFamily: 'Outfit_400Regular',
-  },
   paymentError: {
     backgroundColor: colors.semantic.errorMuted,
     borderRadius: 12,

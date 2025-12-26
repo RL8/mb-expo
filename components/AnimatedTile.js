@@ -1,5 +1,5 @@
 import { memo, useCallback } from 'react';
-import { Text, StyleSheet, Platform } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,32 +16,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import * as Haptics from 'expo-haptics';
 import { colors, getContrastColor, getOverlayColor } from '../lib/theme';
-
-// Haptic feedback helper - runs on JS thread
-const triggerHaptic = (type = 'light') => {
-  if (Platform.OS === 'web') return;
-
-  try {
-    switch (type) {
-      case 'light':
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        break;
-      case 'medium':
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        break;
-      case 'heavy':
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        break;
-      case 'success':
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        break;
-    }
-  } catch (e) {
-    // Haptics not available
-  }
-};
 
 function AnimatedTile({
   item,
@@ -75,18 +50,12 @@ function AnimatedTile({
   const pressed = useSharedValue(0);
   const isLongPressing = useSharedValue(0);
 
-  // Callbacks for haptics (must run on JS thread)
-  const onTapStart = useCallback(() => {
-    triggerHaptic('light');
-  }, []);
-
+  // Callbacks for gesture handlers
   const onTapComplete = useCallback(() => {
-    triggerHaptic('medium');
     if (onPress) onPress(item);
   }, [onPress, item]);
 
   const onLongPressStart = useCallback(() => {
-    triggerHaptic('heavy');
     if (onLongPress) onLongPress(item);
   }, [onLongPress, item]);
 
@@ -96,7 +65,6 @@ function AnimatedTile({
     .onBegin(() => {
       'worklet';
       pressed.value = withSpring(1, { damping: 10, stiffness: 400 });
-      runOnJS(onTapStart)();
     })
     .onFinalize((_, success) => {
       'worklet';

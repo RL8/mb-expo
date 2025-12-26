@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, Text, View, Pressable, Modal, Platform } from 'react-native';
+import { StyleSheet, Text, View, Pressable, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   useSharedValue,
@@ -46,13 +46,6 @@ const GESTURE_HINTS = [
     title: 'Swipe to navigate',
     description: 'Swipe left or right to browse albums',
     animation: 'swipe',
-  },
-  {
-    id: 'tilt',
-    icon: '📱',
-    title: 'Tilt for depth',
-    description: 'Tilt your phone to see parallax effect',
-    animation: 'tilt',
   },
   {
     id: 'doubletap',
@@ -215,11 +208,7 @@ export function GestureOnboarding({ visible, onComplete }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const progress = useSharedValue(0);
 
-  // Filter hints based on platform
-  const availableHints = GESTURE_HINTS.filter(hint => {
-    if (Platform.OS === 'web' && hint.id === 'tilt') return false;
-    return true;
-  });
+  const availableHints = GESTURE_HINTS;
 
   const handleNext = () => {
     if (currentIndex < availableHints.length - 1) {

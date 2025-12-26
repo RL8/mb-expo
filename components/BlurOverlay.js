@@ -1,12 +1,10 @@
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
-import { colors } from '../lib/theme';
+import { View, StyleSheet } from 'react-native';
 
 /**
  * BlurOverlay - Core blur effect component
  *
- * Uses CSS backdrop-filter on web for true blur effect.
- * Falls back to semi-transparent overlay on native (for true blur, use expo-blur).
+ * Uses CSS backdrop-filter for true blur effect.
  *
  * @param {string} intensity - 'light' | 'medium' | 'heavy' (default: 'medium')
  * @param {object} style - Additional styles to apply
@@ -18,8 +16,8 @@ export default function BlurOverlay({ intensity = 'medium', style }) {
     <View
       style={[
         styles.overlay,
-        { backgroundColor: blurConfig.backgroundColor },
-        Platform.OS === 'web' && {
+        {
+          backgroundColor: blurConfig.backgroundColor,
           backdropFilter: `blur(${blurConfig.blur}px)`,
           WebkitBackdropFilter: `blur(${blurConfig.blur}px)`,
         },

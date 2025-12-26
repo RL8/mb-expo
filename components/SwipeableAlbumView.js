@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { StyleSheet, Text, View, Platform } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,19 +10,10 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import * as Haptics from 'expo-haptics';
 import { colors } from '../lib/theme';
 
 const SWIPE_THRESHOLD = 80;
 const VELOCITY_THRESHOLD = 500;
-
-const triggerHaptic = () => {
-  if (Platform.OS !== 'web') {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch (e) {}
-  }
-};
 
 export default function SwipeableAlbumView({
   children,
@@ -39,14 +30,12 @@ export default function SwipeableAlbumView({
 
   const handleSwipePrev = useCallback(() => {
     if (onSwipePrev && prevAlbum) {
-      triggerHaptic();
       onSwipePrev();
     }
   }, [onSwipePrev, prevAlbum]);
 
   const handleSwipeNext = useCallback(() => {
     if (onSwipeNext && nextAlbum) {
-      triggerHaptic();
       onSwipeNext();
     }
   }, [onSwipeNext, nextAlbum]);

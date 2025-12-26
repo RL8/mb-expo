@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: Platform.OS === 'web' ? 20 : 12,
+    paddingTop: 20,
   },
   loadingContainer: {
     flex: 1,

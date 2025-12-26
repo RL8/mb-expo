@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { Platform } from 'react-native';
 
 // Premium features list
 const PREMIUM_FEATURES = ['similarSongs', 'differentSongs'];
@@ -77,10 +76,7 @@ export const useSubscriptionStore = create((set, get) => ({
     set({ checkoutLoading: true });
 
     try {
-      // Get API base URL - empty string for same-origin (web), or explicit URL for mobile
-      const apiBase = Platform.OS === 'web' ? '' : (process.env.EXPO_PUBLIC_API_URL || '');
-
-      const response = await fetch(`${apiBase}/api/create-checkout-session`, {
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId }),
@@ -92,13 +88,7 @@ export const useSubscriptionStore = create((set, get) => ({
       }
 
       const { url } = await response.json();
-
-      if (Platform.OS === 'web') {
-        window.location.href = url;
-      } else {
-        const { Linking } = require('react-native');
-        await Linking.openURL(url);
-      }
+      window.location.href = url;
     } catch (error) {
       console.error('Checkout error:', error);
       throw error;
@@ -114,9 +104,7 @@ export const useSubscriptionStore = create((set, get) => ({
     }
 
     try {
-      const apiBase = Platform.OS === 'web' ? '' : (process.env.EXPO_PUBLIC_API_URL || '');
-
-      const response = await fetch(`${apiBase}/api/create-portal-session`, {
+      const response = await fetch('/api/create-portal-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId }),
@@ -128,13 +116,7 @@ export const useSubscriptionStore = create((set, get) => ({
       }
 
       const { url } = await response.json();
-
-      if (Platform.OS === 'web') {
-        window.location.href = url;
-      } else {
-        const { Linking } = require('react-native');
-        await Linking.openURL(url);
-      }
+      window.location.href = url;
     } catch (error) {
       console.error('Portal error:', error);
       throw error;

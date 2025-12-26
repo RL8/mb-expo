@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Modal, Platform, Linking } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
 import { colors } from '../lib/theme';
 
 // Stripe Payment Link - Create one at https://dashboard.stripe.com/payment-links
@@ -8,11 +8,7 @@ const CHECKOUT_URL = 'https://buy.stripe.com/test_fZe5o52dDbkQ2fS4gj'; // Replac
 
 export default function UpgradeModal({ visible, onClose }) {
   const handleUpgrade = () => {
-    if (Platform.OS === 'web') {
-      window.open(CHECKOUT_URL, '_blank');
-    } else {
-      Linking.openURL(CHECKOUT_URL);
-    }
+    window.open(CHECKOUT_URL, '_blank');
   };
 
   return (

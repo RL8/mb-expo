@@ -301,7 +301,7 @@ export default function AlbumScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg.primary },
-  content: { flex: 1, paddingTop: Platform.OS === 'web' ? 20 : 12 },
+  content: { flex: 1, paddingTop: 20 },
   loadingContainer: { flex: 1, backgroundColor: colors.bg.primary, alignItems: 'center', justifyContent: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   albumNavContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
