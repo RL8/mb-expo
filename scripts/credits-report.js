@@ -40,11 +40,11 @@ async function generateReport() {
       if (coWriters.length > 0) songsWithCoWriters++;
       if (featured.length > 0) songsWithFeatured++;
 
-      const coWriterStr = coWriters.length > 0 ? coWriters.join(', ') : '(none)';
-      const featuredStr = featured.length > 0 ? `[feat. ${featured.join(', ')}]` : '';
+      const coWriterStr = coWriters.length > 0 ? coWriters.join(', ') : '(solo)';
+      const featuredStr = featured.length > 0 ? ` (feat. ${featured.join(', ')})` : '';
 
-      console.log(`${song.track_number}. ${song.title} ${featuredStr}`);
-      console.log(`   Co-writers: ${coWriterStr}`);
+      console.log(`${song.track_number}. ${song.title}${featuredStr}`);
+      console.log(`   Writers: Taylor Swift${coWriters.length > 0 ? ', ' + coWriterStr : ''}`);
     }
   }
 
