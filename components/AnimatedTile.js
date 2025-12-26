@@ -80,15 +80,14 @@ function AnimatedTile({
     backgroundColor: item.color,
   };
 
-  // Track 5 subtle gradient background
+  // Track 5 subtle gradient background - white shimmer works on all album colors
   const track5Style = isTrackFive ? {
-    backgroundImage: 'linear-gradient(135deg, rgba(251, 191, 36, 0.4) 0%, rgba(251, 191, 36, 0.16) 30%, transparent 60%)',
+    backgroundImage: 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.12) 30%, transparent 60%)',
   } : {};
 
-  // Vault track dashed border
+  // Vault track bright inner border using cell's color lightened
   const vaultStyle = isVault ? {
-    borderStyle: 'dashed',
-    borderWidth: 2,
+    boxShadow: `inset 0 0 0 2px rgba(255, 255, 255, 0.5), inset 0 0 0 3px ${item.color}`,
   } : {};
 
   // CSS-based entrance animation
@@ -120,7 +119,14 @@ function AnimatedTile({
             style={[styles.tileName, { color: textColor, fontSize: nameFontSize }]}
             numberOfLines={2}
           >
-            {item.trackNumber ? `${item.trackNumber}. ${item.name}` : item.name}
+            {item.trackNumber ? (
+              <>
+                <Text style={[styles.trackNumber, { fontSize: nameFontSize * 0.7, color: textColor }]}>
+                  {item.trackNumber}.{' '}
+                </Text>
+                {item.name}
+              </>
+            ) : item.name}
           </Text>
 
           {/* Metric value - always show when applicable */}
@@ -130,24 +136,14 @@ function AnimatedTile({
             </Text>
           )}
 
-          {/* Content list - show below value when space allows */}
-          {hasContentList && width > 60 && height > 70 && (
-            <View style={styles.tileContentList}>
-              {item.contentList.slice(0, Math.max(maxContentItems, 1)).map((contentItem, idx) => (
-                <Text
-                  key={idx}
-                  style={[styles.tileContentItem, { color: textColor, fontSize: contentListFontSize }]}
-                  numberOfLines={1}
-                >
-                  {contentItem}
-                </Text>
-              ))}
-              {item.contentList.length > maxContentItems && maxContentItems > 0 && (
-                <Text style={[styles.tileContentMore, { color: textColor, fontSize: contentListFontSize }]}>
-                  +{item.contentList.length - maxContentItems} more
-                </Text>
-              )}
-            </View>
+          {/* Content list - comma separated to save space */}
+          {hasContentList && width > 60 && height > 55 && (
+            <Text
+              style={[styles.tileContentList, { color: textColor, fontSize: contentListFontSize }]}
+              numberOfLines={Math.max(Math.floor((height - 55) / 14), 1)}
+            >
+              {item.contentList.join(', ')}
+            </Text>
           )}
         </View>
       </Animated.View>
@@ -166,7 +162,9 @@ export default memo(AnimatedTile, (prev, next) => {
     prev.metric?.key === next.metric?.key &&
     prev.index === next.index &&
     prev.showOrder === next.showOrder &&
-    prev.isSmall === next.isSmall
+    prev.isSmall === next.isSmall &&
+    prev.isTrackFive === next.isTrackFive &&
+    prev.isVault === next.isVault
   );
 });
 
@@ -195,6 +193,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_600SemiBold',
     textAlign: 'center',
   },
+  trackNumber: {
+    fontFamily: 'JetBrainsMono_400Regular',
+    opacity: 0.6,
+  },
   tileValue: {
     marginTop: 4,
     fontFamily: 'JetBrainsMono_400Regular',
@@ -217,19 +219,9 @@ const styles = StyleSheet.create({
   },
   tileContentList: {
     marginTop: 4,
-    alignItems: 'center',
-    width: '100%',
-  },
-  tileContentItem: {
     fontFamily: 'Outfit_400Regular',
     textAlign: 'center',
-    opacity: 0.9,
+    opacity: 0.8,
     lineHeight: 14,
-  },
-  tileContentMore: {
-    fontFamily: 'JetBrainsMono_400Regular',
-    textAlign: 'center',
-    opacity: 0.7,
-    marginTop: 2,
   },
 });

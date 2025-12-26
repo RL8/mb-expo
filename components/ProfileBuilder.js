@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View, Pressable, SafeAreaView, ScrollView } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AlbumSelector from './AlbumSelector';
 import PerAlbumSongPicker from './PerAlbumSongPicker';
 import WeightingScreen from './WeightingScreen';
@@ -409,7 +408,7 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview, onVi
   // Resume prompt overlay
   if (showResumePrompt) {
     return (
-      <GestureHandlerRootView style={styles.container}>
+      <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.resumePrompt}>
             <Text style={styles.resumeIcon}>📝</Text>
@@ -431,12 +430,12 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview, onVi
             </Pressable>
           </View>
         </SafeAreaView>
-      </GestureHandlerRootView>
+      </View>
     );
   }
 
   return (
-    <GestureHandlerRootView style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
@@ -573,7 +572,7 @@ export default function ProfileBuilder({ albums, songs, onClose, onPreview, onVi
           )}
         </View>
       </SafeAreaView>
-    </GestureHandlerRootView>
+    </View>
   );
 }
 
