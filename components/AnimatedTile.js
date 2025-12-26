@@ -34,8 +34,6 @@ function AnimatedTile({
   // Content list display
   const hasContentList = isContentMetric && item.contentList && item.contentList.length > 0;
   const contentListFontSize = Math.max(Math.min(width / 12, height / 8, 10), 7);
-  // Account for name (~30px), value (~20px), padding (16px) when calculating available space
-  const maxContentItems = Math.floor((height - 66) / 14);
 
   // Shared value for press animation
   const pressed = useSharedValue(0);

@@ -54,6 +54,11 @@ export default function RootLayout() {
     initialize();
   }, []);
 
+  // Blur focus on route change to prevent aria-hidden focus trap
+  useEffect(() => {
+    document.activeElement?.blur?.();
+  }, [pathname]);
+
   // Check subscription when user changes
   useEffect(() => {
     if (user?.id) {
