@@ -537,10 +537,7 @@ function AnimatedTile({ item, metric, suffix, isSmall, index, showOrder, onPress
 
   // Track 5 glow effect (subtle golden glow)
   const track5Style = isTrackFive ? {
-    shadowColor: '#fbbf24',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
+    boxShadow: '0 0 8px rgba(251, 191, 36, 0.6)',
     elevation: 8,
   } : {};
 

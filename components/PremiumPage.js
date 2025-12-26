@@ -73,6 +73,7 @@ function PaymentForm({ onSuccess, customerId, userId }) {
       }
 
       // Confirm the SetupIntent
+      console.log('[Payment] Confirming SetupIntent...');
       const { error: confirmError, setupIntent } = await stripe.confirmSetup({
         elements,
         redirect: 'if_required',
@@ -81,9 +82,11 @@ function PaymentForm({ onSuccess, customerId, userId }) {
       if (confirmError) {
         throw new Error(confirmError.message);
       }
+      console.log('[Payment] SetupIntent confirmed:', setupIntent?.id);
 
       // Create the subscription with the payment method
       const apiBase = process.env.EXPO_PUBLIC_API_URL || '';
+      console.log('[Payment] Creating subscription...');
       const response = await fetch(`${apiBase}/api/complete-subscription`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,9 +101,13 @@ function PaymentForm({ onSuccess, customerId, userId }) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to complete subscription');
       }
+      console.log('[Payment] Subscription created successfully!');
 
-      // Redirect to success
-      window.location.href = `${window.location.origin}/?payment=success`;
+      // Success! Update subscription status inline (no redirect needed)
+      console.log('[Payment] Calling onSuccess callback...');
+      setProcessing(false);
+      await onSuccess?.();
+      console.log('[Payment] onSuccess completed!');
     } catch (err) {
       setError(err.message);
       setProcessing(false);
@@ -405,10 +412,14 @@ export default function PremiumPage({ onClose, onSuccess }) {
   }
 
   const handlePaymentSuccess = async () => {
+    console.log('[handlePaymentSuccess] Called, userId:', userId);
     // Refresh subscription status
     if (userId) {
+      console.log('[handlePaymentSuccess] Checking subscription...');
       await checkSubscription(userId);
+      console.log('[handlePaymentSuccess] Subscription checked, isPremium should update');
     }
+    console.log('[handlePaymentSuccess] Calling parent onSuccess');
     onSuccess?.();
   };
 

@@ -1,8 +1,50 @@
-import { useRef, useEffect } from 'react';
-import { View, Text, Pressable, Animated, StyleSheet } from 'react-native';
+import { memo, useCallback } from 'react';
+import { Text, StyleSheet, Platform } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withSequence,
+  FadeIn,
+  FadeOut,
+  SlideInDown,
+  ZoomIn,
+  ZoomOut,
+  Layout,
+  interpolate,
+  Extrapolation,
+  runOnJS,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 import { colors, getContrastColor, getOverlayColor } from '../lib/theme';
 
-export default function AnimatedTile({
+// Haptic feedback helper - runs on JS thread
+const triggerHaptic = (type = 'light') => {
+  if (Platform.OS === 'web') return;
+
+  try {
+    switch (type) {
+      case 'light':
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        break;
+      case 'medium':
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        break;
+      case 'heavy':
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        break;
+      case 'success':
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        break;
+    }
+  } catch (e) {
+    // Haptics not available
+  }
+};
+
+function AnimatedTile({
   item,
   metric,
   suffix,
@@ -10,9 +52,11 @@ export default function AnimatedTile({
   index,
   showOrder,
   onPress,
+  onLongPress,
   isTrackFive,
   isVault,
   isContentMetric,
+  enableExitAnimation = true,
 }) {
   const textColor = getContrastColor(item.color);
   const width = item.x1 - item.x0;
@@ -28,67 +72,125 @@ export default function AnimatedTile({
   const contentListFontSize = Math.max(Math.min(width / 12, height / 8, 10), 7);
   const maxContentItems = Math.floor((height - 50) / 14);
 
-  const animatedValues = useRef({
-    left: new Animated.Value(item.x0),
-    top: new Animated.Value(item.y0),
-    width: new Animated.Value(width),
-    height: new Animated.Value(height),
-  }).current;
+  // Shared values for interactions
+  const pressed = useSharedValue(0);
+  const isLongPressing = useSharedValue(0);
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(animatedValues.left, { toValue: item.x0, useNativeDriver: false, tension: 40, friction: 8 }),
-      Animated.spring(animatedValues.top, { toValue: item.y0, useNativeDriver: false, tension: 40, friction: 8 }),
-      Animated.spring(animatedValues.width, { toValue: width, useNativeDriver: false, tension: 40, friction: 8 }),
-      Animated.spring(animatedValues.height, { toValue: height, useNativeDriver: false, tension: 40, friction: 8 }),
-    ]).start();
-  }, [item.x0, item.y0, width, height]);
+  // Callbacks for haptics (must run on JS thread)
+  const onTapStart = useCallback(() => {
+    triggerHaptic('light');
+  }, []);
 
-  const TileContent = (
-    <>
-      {showOrderNumber && (
-        <View style={[styles.tileOrder, { backgroundColor: getOverlayColor(textColor) }]}>
-          <Text style={[styles.tileOrderText, { color: textColor, fontSize: orderFontSize }]}>
-            {index + 1}
-          </Text>
-        </View>
-      )}
-      <Text style={[styles.tileName, { color: textColor, fontSize: nameFontSize }]} numberOfLines={2} adjustsFontSizeToFit>
-        {item.name}
-      </Text>
-      {showValue && !hasContentList && (
-        <Text style={[styles.tileValue, { color: textColor, fontSize: valueFontSize }]}>
-          {item.metricValue?.toLocaleString()}{suffix}
-        </Text>
-      )}
-      {hasContentList && width > 60 && height > 60 && (
-        <View style={styles.tileContentList}>
-          {item.contentList.slice(0, Math.max(maxContentItems, 1)).map((contentItem, idx) => (
-            <Text
-              key={idx}
-              style={[styles.tileContentItem, { color: textColor, fontSize: contentListFontSize }]}
-              numberOfLines={1}
-            >
-              {contentItem}
-            </Text>
-          ))}
-          {item.contentList.length > maxContentItems && maxContentItems > 0 && (
-            <Text style={[styles.tileContentMore, { color: textColor, fontSize: contentListFontSize }]}>
-              +{item.contentList.length - maxContentItems} more
-            </Text>
-          )}
-        </View>
-      )}
-    </>
-  );
+  const onTapComplete = useCallback(() => {
+    triggerHaptic('medium');
+    if (onPress) onPress(item);
+  }, [onPress, item]);
+
+  const onLongPressStart = useCallback(() => {
+    triggerHaptic('heavy');
+    if (onLongPress) onLongPress(item);
+  }, [onLongPress, item]);
+
+  // Tap gesture - replaces Pressable for smoother response
+  const tapGesture = Gesture.Tap()
+    .maxDuration(300)
+    .onBegin(() => {
+      'worklet';
+      pressed.value = withSpring(1, { damping: 10, stiffness: 400 });
+      runOnJS(onTapStart)();
+    })
+    .onFinalize((_, success) => {
+      'worklet';
+      if (success) {
+        // Pulse effect on successful tap
+        pressed.value = withSequence(
+          withTiming(1.3, { duration: 60 }),
+          withSpring(0, { damping: 6, stiffness: 180 })
+        );
+        runOnJS(onTapComplete)();
+      } else {
+        pressed.value = withSpring(0, { damping: 8, stiffness: 250 });
+      }
+    });
+
+  // Long press gesture
+  const longPressGesture = Gesture.LongPress()
+    .minDuration(400)
+    .onStart(() => {
+      'worklet';
+      isLongPressing.value = withSpring(1, { damping: 10, stiffness: 150 });
+      runOnJS(onLongPressStart)();
+    })
+    .onEnd(() => {
+      'worklet';
+      isLongPressing.value = withSpring(0, { damping: 12, stiffness: 200 });
+      pressed.value = withSpring(0, { damping: 8, stiffness: 200 });
+    });
+
+  // Combine gestures - long press takes priority
+  const composedGesture = Gesture.Exclusive(longPressGesture, tapGesture);
+
+  // Animated press feedback style
+  const animatedPressStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      pressed.value,
+      [0, 1, 1.3],
+      [1, 0.88, 0.82],
+      Extrapolation.CLAMP
+    );
+
+    const rotate = interpolate(
+      pressed.value,
+      [0, 1],
+      [0, -1.5],
+      Extrapolation.CLAMP
+    );
+
+    const opacity = interpolate(
+      pressed.value,
+      [0, 1],
+      [1, 0.75],
+      Extrapolation.CLAMP
+    );
+
+    const translateY = interpolate(
+      pressed.value,
+      [0, 1],
+      [0, -3],
+      Extrapolation.CLAMP
+    );
+
+    const longPressScale = interpolate(
+      isLongPressing.value,
+      [0, 1],
+      [1, 1.06],
+      Extrapolation.CLAMP
+    );
+
+    return {
+      transform: [
+        { scale: scale * longPressScale },
+        { rotate: `${rotate}deg` },
+        { translateY },
+      ],
+      opacity,
+    };
+  });
+
+  // Position style
+  const positionStyle = {
+    position: 'absolute',
+    left: item.x0,
+    top: item.y0,
+    width,
+    height,
+    backgroundColor: item.color,
+  };
 
   // Track 5 glow effect
   const track5Style = isTrackFive ? {
-    shadowColor: '#fbbf24',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 8,
+    boxShadow: '0 0 12px rgba(251, 191, 36, 0.8)',
+    elevation: 10,
   } : {};
 
   // Vault track dashed border
@@ -97,45 +199,128 @@ export default function AnimatedTile({
     borderWidth: 2,
   } : {};
 
+  // Staggered entrance delay
+  const entranceDelay = index * 60;
+
+  // Entrance animation: zoom in with spring
+  const enteringAnimation = ZoomIn
+    .delay(entranceDelay)
+    .duration(350)
+    .springify()
+    .damping(12)
+    .stiffness(110);
+
+  // Exit animation: zoom out + fade
+  const exitingAnimation = enableExitAnimation
+    ? ZoomOut.duration(200).springify().damping(14)
+    : undefined;
+
   return (
     <Animated.View
-      style={[
-        styles.tile,
-        {
-          left: animatedValues.left,
-          top: animatedValues.top,
-          width: animatedValues.width,
-          height: animatedValues.height,
-          backgroundColor: item.color,
-        },
-        track5Style,
-        vaultStyle,
-      ]}
+      style={[styles.tileWrapper, positionStyle]}
+      entering={enteringAnimation}
+      exiting={exitingAnimation}
+      layout={Layout.springify().damping(14).stiffness(100).mass(0.8)}
     >
-      {onPress ? (
-        <Pressable style={styles.tileInner} onPress={() => onPress(item)}>
-          {TileContent}
-        </Pressable>
-      ) : TileContent}
+      <GestureDetector gesture={composedGesture}>
+        <Animated.View style={[styles.tileInner, animatedPressStyle]}>
+          <Animated.View style={[styles.tile, track5Style, vaultStyle]}>
+            {/* Order badge */}
+            {showOrderNumber && (
+              <Animated.View
+                style={[styles.tileOrder, { backgroundColor: getOverlayColor(textColor) }]}
+                entering={ZoomIn.delay(entranceDelay + 150).duration(250).springify().damping(10)}
+              >
+                <Text style={[styles.tileOrderText, { color: textColor, fontSize: orderFontSize }]}>
+                  {index + 1}
+                </Text>
+              </Animated.View>
+            )}
+
+            {/* Album/Song name */}
+            <Animated.Text
+              style={[styles.tileName, { color: textColor, fontSize: nameFontSize }]}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              entering={SlideInDown.delay(entranceDelay + 80).duration(280).springify().damping(14)}
+            >
+              {item.name}
+            </Animated.Text>
+
+            {/* Metric value */}
+            {showValue && !hasContentList && (
+              <Animated.Text
+                style={[styles.tileValue, { color: textColor, fontSize: valueFontSize }]}
+                entering={FadeIn.delay(entranceDelay + 200).duration(300)}
+              >
+                {item.metricValue?.toLocaleString()}{suffix}
+              </Animated.Text>
+            )}
+
+            {/* Content list */}
+            {hasContentList && width > 60 && height > 60 && (
+              <Animated.View
+                style={styles.tileContentList}
+                entering={FadeIn.delay(entranceDelay + 180).duration(250)}
+              >
+                {item.contentList.slice(0, Math.max(maxContentItems, 1)).map((contentItem, idx) => (
+                  <Text
+                    key={idx}
+                    style={[styles.tileContentItem, { color: textColor, fontSize: contentListFontSize }]}
+                    numberOfLines={1}
+                  >
+                    {contentItem}
+                  </Text>
+                ))}
+                {item.contentList.length > maxContentItems && maxContentItems > 0 && (
+                  <Text style={[styles.tileContentMore, { color: textColor, fontSize: contentListFontSize }]}>
+                    +{item.contentList.length - maxContentItems} more
+                  </Text>
+                )}
+              </Animated.View>
+            )}
+          </Animated.View>
+        </Animated.View>
+      </GestureDetector>
     </Animated.View>
   );
 }
 
+export default memo(AnimatedTile, (prev, next) => {
+  return (
+    prev.item.id === next.item.id &&
+    prev.item.x0 === next.item.x0 &&
+    prev.item.y0 === next.item.y0 &&
+    prev.item.x1 === next.item.x1 &&
+    prev.item.y1 === next.item.y1 &&
+    prev.item.metricValue === next.item.metricValue &&
+    prev.metric?.key === next.metric?.key &&
+    prev.index === next.index &&
+    prev.showOrder === next.showOrder &&
+    prev.isSmall === next.isSmall
+  );
+});
+
 const styles = StyleSheet.create({
+  tileWrapper: {
+    borderRadius: 8,
+    overflow: 'visible',
+  },
+  tileInner: {
+    flex: 1,
+    borderRadius: 8,
+  },
   tile: {
-    position: 'absolute',
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 8,
     borderWidth: 1.5,
     borderColor: colors.border.tile,
     borderRadius: 8,
-  },
-  tileInner: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'transparent',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+    elevation: 4,
   },
   tileName: {
     fontFamily: 'Outfit_600SemiBold',
@@ -151,9 +336,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     left: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },

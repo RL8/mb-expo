@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts, Outfit_300Light, Outfit_400Regular, Outfit_600SemiBold, Outfit_800ExtraBold } from '@expo-google-fonts/outfit';
 import { JetBrainsMono_400Regular, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
 import * as SplashScreen from 'expo-splash-screen';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '../stores/authStore';
 import { useSubscriptionStore } from '../stores/subscriptionStore';
 import LinkAccountPrompt from '../components/LinkAccountPrompt';
@@ -126,7 +127,7 @@ export default function RootLayout() {
   }
 
   return (
-    <View style={styles.container}>
+    <GestureHandlerRootView style={styles.container}>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -147,6 +148,7 @@ export default function RootLayout() {
         <Stack.Screen name="p/[shareId]" />
         <Stack.Screen name="premium" />
         <Stack.Screen name="leaderboard" />
+        <Stack.Screen name="compare" />
       </Stack>
 
       {/* Payment success toast */}
@@ -170,7 +172,7 @@ export default function RootLayout() {
       />
 
       <StatusBar style="light" />
-    </View>
+    </GestureHandlerRootView>
   );
 }
 

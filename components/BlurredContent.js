@@ -204,10 +204,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.accent.primaryBorder,
     // Shadow for depth
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
     elevation: 8,
   },
   floatingTitle: {

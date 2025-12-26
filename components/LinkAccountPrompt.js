@@ -62,8 +62,18 @@ export default function LinkAccountPrompt({ visible, onDismiss, prefillEmail = '
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleSkip}>
-      <View style={styles.overlay}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={handleSkip}
+      statusBarTranslucent
+    >
+      <View
+        style={styles.overlay}
+        accessibilityViewIsModal={true}
+        accessibilityLabel="Link account dialog"
+      >
         <View style={styles.modal}>
           <Text style={styles.title}>Secure Your Account</Text>
           <Text style={styles.subtitle}>
