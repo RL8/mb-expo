@@ -17,10 +17,24 @@ export default function UpgradeModal({ visible, onClose }) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.content} onPress={e => e.stopPropagation()}>
+      <Pressable
+        style={styles.overlay}
+        onPress={onClose}
+        accessibilityViewIsModal={true}
+        accessibilityLabel="Upgrade to premium dialog"
+      >
+        <Pressable
+          style={styles.content}
+          onPress={e => e.stopPropagation()}
+          accessibilityRole="none"
+        >
           {/* Close button */}
-          <Pressable style={styles.closeBtn} onPress={onClose}>
+          <Pressable
+            style={styles.closeBtn}
+            onPress={onClose}
+            accessibilityLabel="Close"
+            accessibilityRole="button"
+          >
             <Text style={styles.closeBtnText}>×</Text>
           </Pressable>
 
@@ -55,7 +69,12 @@ export default function UpgradeModal({ visible, onClose }) {
           </View>
 
           {/* CTA */}
-          <Pressable style={styles.upgradeBtn} onPress={handleUpgrade}>
+          <Pressable
+            style={styles.upgradeBtn}
+            onPress={handleUpgrade}
+            accessibilityLabel="Upgrade now for $13.13 per year"
+            accessibilityRole="button"
+          >
             <Text style={styles.upgradeBtnText}>Upgrade Now</Text>
           </Pressable>
 

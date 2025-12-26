@@ -16,7 +16,6 @@ if (__DEV__) {
   LogBox.ignoreLogs([
     'Download the React DevTools',
     'You may test your Stripe.js',
-    'Blocked aria-hidden',
   ]);
 }
 
@@ -133,6 +132,9 @@ export default function RootLayout() {
           headerShown: false,
           contentStyle: { backgroundColor: colors.bg.primary },
           animation: 'fade',
+          // Prevent focus traps by properly managing screen lifecycle
+          freezeOnBlur: true,
+          animationTypeForReplace: 'push',
         }}
       >
         <Stack.Screen name="index" />

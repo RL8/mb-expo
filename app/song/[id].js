@@ -45,8 +45,17 @@ export default function SongModal() {
   const mostDifferent = sortedByDiff.slice(-3).reverse();
 
   return (
-    <View style={styles.overlay}>
-      <Pressable style={styles.backdrop} onPress={() => router.back()} />
+    <View
+      style={styles.overlay}
+      accessibilityViewIsModal={true}
+      accessibilityLabel="Song details"
+    >
+      <Pressable
+        style={styles.backdrop}
+        onPress={() => router.back()}
+        accessibilityLabel="Close song details"
+        accessibilityRole="button"
+      />
       <View style={styles.content}>
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Header */}
@@ -56,7 +65,12 @@ export default function SongModal() {
               <Text style={styles.title} numberOfLines={2}>{song.name}</Text>
               <Text style={styles.subtitle}>{album?.display_name || 'Unknown Album'}</Text>
             </View>
-            <Pressable style={styles.close} onPress={() => router.back()}>
+            <Pressable
+              style={styles.close}
+              onPress={() => router.back()}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+            >
               <Text style={styles.closeText}>×</Text>
             </Pressable>
           </View>

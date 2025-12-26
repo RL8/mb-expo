@@ -48,7 +48,11 @@ export default function LinkAccountPrompt({ visible, onDismiss, prefillEmail = '
   if (success) {
     return (
       <Modal visible={visible} transparent animationType="fade">
-        <View style={styles.overlay}>
+        <View
+          style={styles.overlay}
+          accessibilityViewIsModal={true}
+          accessibilityLabel="Account secured confirmation"
+        >
           <View style={styles.modal}>
             <Text style={styles.successIcon}>✓</Text>
             <Text style={styles.successTitle}>Account Secured!</Text>

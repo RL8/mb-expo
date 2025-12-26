@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Platform, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Platform, Linking, ActivityIndicator, Modal } from 'react-native';
 import { useAuthStore } from '../stores/authStore';
 import { useSubscriptionStore } from '../stores/subscriptionStore';
 import { colors } from '../lib/theme';
@@ -67,21 +67,34 @@ export function PaywallBlur({ children, feature = 'premium' }) {
       </Pressable>
 
       {/* Mobile upgrade modal */}
-      {showUpgrade && Platform.OS !== 'web' && (
-        <View style={styles.mobileModal}>
-          <Text style={styles.mobileModalTitle}>Upgrade on Web</Text>
-          <Text style={styles.mobileModalText}>
-            To unlock premium features, please visit our web version at:
-          </Text>
-          <Text style={styles.mobileModalUrl}>taylorswift.app/premium</Text>
-          <Pressable
-            style={styles.mobileModalClose}
-            onPress={() => setShowUpgrade(false)}
-          >
-            <Text style={styles.mobileModalCloseText}>Got it</Text>
-          </Pressable>
+      <Modal
+        visible={showUpgrade && Platform.OS !== 'web'}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowUpgrade(false)}
+      >
+        <View
+          style={styles.mobileModalOverlay}
+          accessibilityViewIsModal={true}
+          accessibilityLabel="Upgrade information"
+        >
+          <View style={styles.mobileModal}>
+            <Text style={styles.mobileModalTitle}>Upgrade on Web</Text>
+            <Text style={styles.mobileModalText}>
+              To unlock premium features, please visit our web version at:
+            </Text>
+            <Text style={styles.mobileModalUrl}>taylorswift.app/premium</Text>
+            <Pressable
+              style={styles.mobileModalClose}
+              onPress={() => setShowUpgrade(false)}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+            >
+              <Text style={styles.mobileModalCloseText}>Got it</Text>
+            </Pressable>
+          </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 }
@@ -254,18 +267,22 @@ const styles = StyleSheet.create({
   },
 
   // Mobile modal
+  mobileModalOverlay: {
+    flex: 1,
+    backgroundColor: colors.bg.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
   mobileModal: {
-    position: 'absolute',
-    top: '50%',
-    left: 20,
-    right: 20,
-    transform: [{ translateY: -80 }],
     backgroundColor: colors.bg.elevated,
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border.medium,
+    maxWidth: 320,
+    width: '100%',
   },
   mobileModalTitle: {
     fontSize: 16,
