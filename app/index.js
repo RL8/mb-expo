@@ -7,6 +7,7 @@ import { useDataStore, albumToSlug } from '../stores/dataStore';
 import { loadProfile } from '../lib/storage';
 import { colors, getContrastColor, getOverlayColor } from '../lib/theme';
 import AnimatedTile from '../components/AnimatedTile';
+import InteractiveTreemap from '../components/InteractiveTreemap';
 
 const METRIC_GROUPS = [
   {
@@ -375,21 +376,26 @@ export default function HomeScreen() {
           <InfoButton metricKey={selectedMetric} />
         </View>
 
-        <View style={[styles.treemapContainer, { width: treemapWidth, height: treemapHeight }]}>
-          {treemapData.map((item, index) => (
-            <AnimatedTile
-              key={item.id}
-              item={item}
-              metric={currentMetric}
-              suffix={currentSuffix}
-              isSmall={isSmall}
-              index={index}
-              showOrder={sortBy === 'value' && selectedMetric !== 'default'}
-              isContentMetric={['vaultTracks', 'coWriterCount', 'themeCount'].includes(actualDataKey)}
-              onPress={() => router.push(`/album/${item.slug}`)}
-            />
-          ))}
-        </View>
+        <InteractiveTreemap
+          width={treemapWidth}
+          height={treemapHeight}
+        >
+          <View style={[styles.treemapContent, { width: treemapWidth, height: treemapHeight }]}>
+            {treemapData.map((item, index) => (
+              <AnimatedTile
+                key={item.id}
+                item={item}
+                metric={currentMetric}
+                suffix={currentSuffix}
+                isSmall={isSmall}
+                index={index}
+                showOrder={sortBy === 'value' && selectedMetric !== 'default'}
+                isContentMetric={['vaultTracks', 'coWriterCount', 'themeCount'].includes(actualDataKey)}
+                onPress={() => router.push(`/album/${item.slug}`)}
+              />
+            ))}
+          </View>
+        </InteractiveTreemap>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>{albums.length} ALBUMS{footerSuffix}</Text>
@@ -461,7 +467,7 @@ const styles = StyleSheet.create({
   infoModalDescription: { fontSize: 14, color: colors.text.secondary, fontFamily: 'Outfit_400Regular', lineHeight: 22, marginBottom: 20 },
   infoModalClose: { backgroundColor: colors.accent.primary, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, alignItems: 'center' },
   infoModalCloseText: { color: colors.text.inverse, fontSize: 13, fontFamily: 'Outfit_600SemiBold' },
-  treemapContainer: { position: 'relative', borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: colors.border.subtle },
+  treemapContent: { position: 'relative' },
   footer: { paddingVertical: 10, alignItems: 'center' },
   footerText: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 9, color: colors.text.muted, letterSpacing: 2 },
 });

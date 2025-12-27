@@ -6,6 +6,7 @@ import squarify from 'squarify';
 import { useDataStore } from '../../stores/dataStore';
 import { colors } from '../../lib/theme';
 import AnimatedTile from '../../components/AnimatedTile';
+import InteractiveTreemap from '../../components/InteractiveTreemap';
 
 const METRIC_GROUPS = [
   {
@@ -305,23 +306,28 @@ export default function AlbumScreen() {
           />
         </View>
 
-        <View style={[styles.treemapContainer, { width: treemapWidth, height: treemapHeight }]}>
-          {treemapData.map((item, index) => (
-            <AnimatedTile
-              key={item.id}
-              item={item}
-              metric={currentMetric}
-              suffix={currentSuffix}
-              isSmall={isSmall}
-              index={index}
-              showOrder={sortBy === 'value' && selectedMetric !== 'default'}
-              isTrackFive={item.trackNumber === 5}
-              isVault={item.isVault}
-              isContentMetric={['coWriterCount', 'themeCount'].includes(actualDataKey)}
-              onPress={() => router.push(`/song/${item.id}?album=${slug}`)}
-            />
-          ))}
-        </View>
+        <InteractiveTreemap
+          width={treemapWidth}
+          height={treemapHeight}
+        >
+          <View style={[styles.treemapContent, { width: treemapWidth, height: treemapHeight }]}>
+            {treemapData.map((item, index) => (
+              <AnimatedTile
+                key={item.id}
+                item={item}
+                metric={currentMetric}
+                suffix={currentSuffix}
+                isSmall={isSmall}
+                index={index}
+                showOrder={sortBy === 'value' && selectedMetric !== 'default'}
+                isTrackFive={item.trackNumber === 5}
+                isVault={item.isVault}
+                isContentMetric={['coWriterCount', 'themeCount'].includes(actualDataKey)}
+                onPress={() => router.push(`/song/${item.id}?album=${slug}`)}
+              />
+            ))}
+          </View>
+        </InteractiveTreemap>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>{songs.length} SONGS{footerSuffix}</Text>
@@ -372,7 +378,7 @@ const styles = StyleSheet.create({
   modalItemTextActive: { color: colors.accent.primary, fontFamily: 'Outfit_600SemiBold' },
   modalItemTextDisabled: { color: colors.text.disabled },
   modalCheck: { color: colors.accent.primary, fontSize: 16 },
-  treemapContainer: { position: 'relative', borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: colors.border.subtle },
+  treemapContent: { position: 'relative' },
   footer: { paddingVertical: 10, alignItems: 'center' },
   footerText: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 9, color: colors.text.muted, letterSpacing: 2 },
 });
